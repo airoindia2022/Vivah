@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import axios from 'axios';
 
-const API = 'http://localhost:5000/api/admin';
+const API = 'https://vivah1.onrender.com/api/admin';
 
 interface AdminUser {
     _id: string;
