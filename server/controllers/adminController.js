@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const Transaction = require('../models/transactionModel');
 const generateToken = require('../utils/generateToken');
 
 // @desc    Get all users (admin)
@@ -106,6 +107,13 @@ const getStats = async (req, res) => {
             { $group: { _id: '$subscriptionTier', count: { $sum: 1 } } }
         ]);
 
+        // Total Revenue
+        const revenueData = await Transaction.aggregate([
+            { $match: { status: 'Success' } },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]);
+        const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
+
         res.json({
             totalUsers,
             maleUsers,
@@ -114,6 +122,7 @@ const getStats = async (req, res) => {
             premiumUsers,
             newUsers,
             subscriptionBreakdown,
+            totalRevenue,
         });
     } catch (error) {
         console.error('Admin getStats Error:', error);
@@ -157,4 +166,31 @@ const seedAdmin = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, bulkDeleteUsers, deleteUser, toggleVerify, getStats, seedAdmin };
+// @desc    Get all transactions (admin)
+// @route   GET /api/admin/transactions
+// @access  Admin
+const getAllTransactions = async (req, res) => {
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        
+        const total = await Transaction.countDocuments();
+        const transactions = await Transaction.find()
+            .populate('user', 'fullName email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        res.json({ 
+            transactions, 
+            total, 
+            page: parseInt(page), 
+            pages: Math.ceil(total / parseInt(limit)) 
+        });
+    } catch (error) {
+        console.error('Admin getAllTransactions Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+module.exports = { getAllUsers, bulkDeleteUsers, deleteUser, toggleVerify, getStats, seedAdmin, getAllTransactions };

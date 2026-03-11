@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const User = require('../models/userModel');
+const Transaction = require('../models/transactionModel');
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyIdHere',
@@ -48,6 +49,17 @@ const verifyPayment = async (req, res) => {
                 user.subscriptionTier = 'Gold';
                 user.isVerified = true;
                 await user.save();
+
+                // Create Transaction record
+                await Transaction.create({
+                    user: userId,
+                    razorpay_order_id,
+                    razorpay_payment_id,
+                    amount: 1, // Since we hardcoded 100 paise
+                    currency: 'INR',
+                    status: 'Success',
+                    plan: 'Gold'
+                });
 
                 const userObj = user.toObject();
                 delete userObj.password;

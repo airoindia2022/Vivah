@@ -21,6 +21,21 @@ interface AdminUser {
     createdAt: string;
 }
 
+interface Transaction {
+    _id: string;
+    user: {
+        fullName: string;
+        email: string;
+    } | null;
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    plan: string;
+    createdAt: string;
+}
+
 interface Stats {
     totalUsers: number;
     maleUsers: number;
@@ -28,6 +43,7 @@ interface Stats {
     verifiedUsers: number;
     premiumUsers: number;
     newUsers: number;
+    totalRevenue: number;
     subscriptionBreakdown: { _id: string; count: number }[];
 }
 
@@ -56,7 +72,13 @@ export const AdminPage = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [bulkConfirm, setBulkConfirm] = useState(false);
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'users'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'transactions'>('dashboard');
+
+    const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [transLoading, setTransLoading] = useState(false);
+    const [transPage, setTransPage] = useState(1);
+    const [transTotalPages, setTransTotalPages] = useState(1);
+    const [transTotalCount, setTransTotalCount] = useState(0);
 
     const headers = { Authorization: `Bearer ${token}` };
 
@@ -94,6 +116,23 @@ export const AdminPage = () => {
         }
     }, [token, search, genderFilter, subFilter, page]);
 
+    const fetchTransactions = useCallback(async () => {
+        setTransLoading(true);
+        try {
+            const { data } = await axios.get(`${API}/transactions`, {
+                headers,
+                params: { page: transPage, limit: 15 },
+            });
+            setTransactions(data.transactions);
+            setTransTotalPages(data.pages);
+            setTransTotalCount(data.total);
+        } catch {
+            showToast('Failed to load transactions', 'error');
+        } finally {
+            setTransLoading(false);
+        }
+    }, [token, transPage]);
+
     useEffect(() => {
         if (!user || !(user as any).isAdmin) {
             navigate('/');
@@ -104,7 +143,8 @@ export const AdminPage = () => {
 
     useEffect(() => {
         if (activeTab === 'users') fetchUsers();
-    }, [activeTab, fetchUsers]);
+        if (activeTab === 'transactions') fetchTransactions();
+    }, [activeTab, fetchUsers, fetchTransactions]);
 
     const toggleSelect = (id: string) => {
         setSelected(prev => {
@@ -196,6 +236,12 @@ export const AdminPage = () => {
                     >
                         <span>👥</span> Manage Users
                     </button>
+                    <button
+                        className={`admin-nav-btn ${activeTab === 'transactions' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('transactions')}
+                    >
+                        <span>💳</span> Transactions
+                    </button>
                     <button className="admin-nav-btn" onClick={() => navigate('/')}>
                         <span>🏠</span> Back to Site
                     </button>
@@ -232,6 +278,7 @@ export const AdminPage = () => {
                                     <StatCard label="Verified Users" value={stats.verifiedUsers} icon="✅" color="#10b981" />
                                     <StatCard label="Premium Members" value={stats.premiumUsers} icon="💎" color="#f59e0b" />
                                     <StatCard label="New (7 days)" value={stats.newUsers} icon="🆕" color="#8b5cf6" />
+                                    <StatCard label="Total Revenue" value={`₹${stats.totalRevenue}`} icon="💰" color="#059669" />
                                 </div>
 
                                 <div className="admin-breakdown-section">
@@ -445,6 +492,97 @@ export const AdminPage = () => {
                                     className="admin-page-btn"
                                     disabled={page === totalPages}
                                     onClick={() => setPage(p => p + 1)}
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Transactions Tab */}
+                {activeTab === 'transactions' && (
+                    <div className="admin-content-area">
+                        <div className="admin-page-header">
+                            <div>
+                                <h1 className="admin-page-title">Transaction History</h1>
+                                <p className="admin-page-subtitle">{transTotalCount} total payments recorded</p>
+                            </div>
+                            <button className="admin-refresh-btn" onClick={fetchTransactions}>↻ Refresh</button>
+                        </div>
+
+                        {transLoading ? (
+                            <div className="admin-loading"><div className="admin-spinner" /></div>
+                        ) : (
+                            <div className="admin-table-wrap">
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>User</th>
+                                            <th>Plan</th>
+                                            <th>Amount</th>
+                                            <th>Order ID</th>
+                                            <th>Payment ID</th>
+                                            <th>Status</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {transactions.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={7} className="admin-empty">No transactions found</td>
+                                            </tr>
+                                        ) : transactions.map(t => (
+                                            <tr key={t._id}>
+                                                <td>
+                                                    <div className="admin-user-cell">
+                                                        <div className="admin-user-avatar">
+                                                            <span className="admin-user-initials">{t.user?.fullName?.charAt(0) || '?'}</span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="admin-user-name">{t.user?.fullName || 'Deleted User'}</div>
+                                                            <div className="admin-user-email">{t.user?.email || '—'}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="admin-tier-badge" style={{ color: tierColors[t.plan] }}>
+                                                        {t.plan}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="font-bold text-gray-900">{t.currency} {t.amount}</div>
+                                                </td>
+                                                <td><code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{t.razorpay_order_id}</code></td>
+                                                <td><code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{t.razorpay_payment_id}</code></td>
+                                                <td>
+                                                    <span className={`admin-status-badge ${t.status === 'Success' ? 'admin-status-verified' : 'admin-status-pending'}`}>
+                                                        {t.status === 'Success' ? '✓ ' + t.status : '○ ' + t.status}
+                                                    </span>
+                                                </td>
+                                                <td>{new Date(t.createdAt).toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {transTotalPages > 1 && (
+                            <div className="admin-pagination">
+                                <button
+                                    className="admin-page-btn"
+                                    disabled={transPage === 1}
+                                    onClick={() => setTransPage(p => p - 1)}
+                                >
+                                    ← Prev
+                                </button>
+                                <span className="admin-page-info">Page {transPage} of {transTotalPages}</span>
+                                <button
+                                    className="admin-page-btn"
+                                    disabled={transPage === transTotalPages}
+                                    onClick={() => setTransPage(p => p + 1)}
                                 >
                                     Next →
                                 </button>
