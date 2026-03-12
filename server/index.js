@@ -50,7 +50,7 @@ app.use(mongoSanitize());
 
 // CORS Configuration
 const corsOptions = {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: process.env.CLIENT_URL || 'https://vivah-plum.vercel.app',
     credentials: true,
 };
 app.use(cors(corsOptions));
