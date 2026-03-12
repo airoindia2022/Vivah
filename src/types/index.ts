@@ -4,6 +4,7 @@ export type MaritalStatus = 'Never Married' | 'Divorced' | 'Widowed' | 'Awaiting
 export interface UserProfile {
     id: string;
     fullName: string;
+    email?: string;
     age: number;
     gender: Gender;
     height: string;
@@ -20,6 +21,9 @@ export interface UserProfile {
     profession: string;
     education: string;
     income?: string;
+    phoneNumber?: string;
+    whatsappNumber?: string;
+    contactEmail?: string;
     photos: string[];
     bio: string;
     interests: string[];

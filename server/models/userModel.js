@@ -26,6 +26,9 @@ const userSchema = new mongoose.Schema({
     profession: { type: String },
     education: { type: String },
     income: { type: String },
+    phoneNumber: { type: String },
+    whatsappNumber: { type: String },
+    contactEmail: { type: String },
     photos: [{ type: String }],
     bio: {
         type: String,

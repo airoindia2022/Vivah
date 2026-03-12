@@ -15,6 +15,9 @@ interface User {
     profession?: string;
     education?: string;
     bio?: string;
+    phoneNumber?: string;
+    whatsappNumber?: string;
+    contactEmail?: string;
     isAdmin?: boolean;
 }
 

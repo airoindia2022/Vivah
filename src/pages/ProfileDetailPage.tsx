@@ -336,20 +336,20 @@ export const ProfileDetailPage = () => {
                                         Contact Options
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <a href="#" className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-green-50 hover:text-green-600 transition-colors group">
+                                        <a href={`tel:${profile.phoneNumber}`} className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-green-50 hover:text-green-600 transition-colors group">
                                             <Phone className="w-8 h-8 text-gray-400 group-hover:text-green-500 mb-3" />
                                             <span className="font-bold text-gray-900 group-hover:text-green-700">Call Direct</span>
-                                            <span className="text-xs text-gray-500 mt-1">+91 98****3210</span>
+                                            <span className="text-xs text-gray-500 mt-1">{profile.phoneNumber || 'Not provided'}</span>
                                         </a>
-                                        <a href="#" className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-colors group">
+                                        <a href={`https://wa.me/${profile.whatsappNumber?.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-colors group">
                                             <MessageCircle className="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-3" />
                                             <span className="font-bold text-gray-900 group-hover:text-blue-700">WhatsApp</span>
-                                            <span className="text-xs text-gray-500 mt-1">Available to chat</span>
+                                            <span className="text-xs text-gray-500 mt-1">{profile.whatsappNumber || 'Not provided'}</span>
                                         </a>
-                                        <a href="#" className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-brand-50 hover:text-brand-600 transition-colors group">
+                                        <a href={`mailto:${profile.contactEmail}`} className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-2xl hover:bg-brand-50 hover:text-brand-600 transition-colors group">
                                             <Mail className="w-8 h-8 text-gray-400 group-hover:text-brand-500 mb-3" />
                                             <span className="font-bold text-gray-900 group-hover:text-brand-700">Email</span>
-                                            <span className="text-xs text-gray-500 mt-1">contact.m***@gmail.com</span>
+                                            <span className="text-xs text-gray-500 mt-1">{profile.contactEmail || profile.email || 'Not provided'}</span>
                                         </a>
                                     </div>
                                 </section>

@@ -140,7 +140,7 @@ const registerUser = async (req, res) => {
             fullName, email, password, gender, age, religion,
             caste, motherTongue, height, weight, skinColor, city, state,
             profession, education, income, bio, interests,
-            familyDetails, photos
+            familyDetails, photos, phoneNumber, whatsappNumber, contactEmail
         } = req.body;
 
         if (bio && countWords(bio) > 300) {
@@ -175,6 +175,9 @@ const registerUser = async (req, res) => {
             interests,
             familyDetails,
             photos: photos || [],
+            phoneNumber,
+            whatsappNumber,
+            contactEmail,
             isVerified: true, // We assume verification was done in Step 1
         });
 
@@ -346,6 +349,9 @@ const updateProfile = async (req, res) => {
             user.profession = req.body.profession || user.profession;
             user.education = req.body.education || user.education;
             user.income = req.body.income || user.income;
+            user.phoneNumber = req.body.phoneNumber || user.phoneNumber;
+            user.whatsappNumber = req.body.whatsappNumber || user.whatsappNumber;
+            user.contactEmail = req.body.contactEmail || user.contactEmail;
 
             if (req.body.bio) {
                 if (countWords(req.body.bio) > 300) {

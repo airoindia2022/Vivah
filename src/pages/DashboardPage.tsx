@@ -49,13 +49,16 @@ export const DashboardPage = () => {
     const completeness = useMemo(() => {
         if (!user) return 0;
         let score = 0;
-        if (user.fullName) score += 20;
-        if (user.age) score += 10;
-        if (user.gender) score += 10;
+        if (user.fullName) score += 15;
+        if (user.age) score += 5;
+        if (user.gender) score += 5;
         if (user.location?.city) score += 10;
-        if (user.bio) score += 20;
+        if (user.bio) score += 15;
         if (user.photos && user.photos.length > 0) score += 20;
         if (user.profession) score += 10;
+        if (user.phoneNumber) score += 10;
+        if (user.contactEmail) score += 10;
+        return score;
         return score;
     }, [user]);
 

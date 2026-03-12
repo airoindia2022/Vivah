@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import {
     User, MapPin, Briefcase, Camera, Save, ChevronLeft,
-    GraduationCap, Heart, Users, Ruler
+    GraduationCap, Heart, Users, Ruler, Phone, MessageCircle, Mail
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -44,6 +44,9 @@ export const EditProfilePage = () => {
             motherStatus: '',
             siblings: '',
             familyValues: 'Moderate',
+            phoneNumber: '',
+            whatsappNumber: '',
+            contactEmail: '',
         }
     });
 
@@ -84,6 +87,9 @@ export const EditProfilePage = () => {
             motherStatus: profileData.familyDetails?.motherStatus || '',
             siblings: profileData.familyDetails?.siblings || '',
             familyValues: profileData.familyDetails?.familyValues || 'Moderate',
+            phoneNumber: profileData.phoneNumber || '',
+            whatsappNumber: profileData.whatsappNumber || '',
+            contactEmail: profileData.contactEmail || '',
         });
     }, [profileData, reset]);
 
@@ -139,6 +145,9 @@ export const EditProfilePage = () => {
                     siblings: data.siblings,
                     familyValues: data.familyValues,
                 },
+                phoneNumber: data.phoneNumber,
+                whatsappNumber: data.whatsappNumber,
+                contactEmail: data.contactEmail,
             });
             updateUser(updatedUser);
             navigate('/dashboard');
@@ -237,8 +246,6 @@ export const EditProfilePage = () => {
                                 </div>
                             </div>
                         </section>
-
-
                         {/* ── Location & Career ── */}
                         <section className="space-y-6">
                             <h2 className="text-xl font-bold flex items-center">
@@ -272,6 +279,33 @@ export const EditProfilePage = () => {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Annual Income</label>
                                     <input {...register('income')} placeholder="e.g. 10-15 LPA" className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* ── Contact Details ── */}
+                        <section className="space-y-6">
+                            <h2 className="text-xl font-bold flex items-center">
+                                <Phone className="w-5 h-5 mr-2 text-brand-600" /> Contact Details
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                        <Phone className="w-4 h-4 text-brand-500" /> Phone Number
+                                    </label>
+                                    <input placeholder="e.g. +91 9876543210" {...register('phoneNumber')} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                        <MessageCircle className="w-4 h-4 text-brand-500" /> WhatsApp Number
+                                    </label>
+                                    <input placeholder="e.g. +91 9876543210" {...register('whatsappNumber')} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
+                                        <Mail className="w-4 h-4 text-brand-500" /> Contact Email
+                                    </label>
+                                    <input type="email" placeholder="e.g. contact@example.com" {...register('contactEmail')} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all" />
                                 </div>
                             </div>
                         </section>
