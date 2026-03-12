@@ -43,7 +43,7 @@ export const Navbar = () => {
 
                         {isAuthenticated ? (
                             <div className="flex items-center space-x-4">
-                                <Link to="/dashboard" className="flex items-center space-x-2 text-gray-600 hover:text-brand-600">
+                                <Link to={user?.isAdmin ? "/admin" : "/dashboard"} className="flex items-center space-x-2 text-gray-600 hover:text-brand-600">
                                     <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden">
                                         {user?.photos?.[0] ? (
                                             <img src={user.photos[0]} alt="" className="w-full h-full object-cover" />
@@ -130,7 +130,7 @@ export const Navbar = () => {
                             ) : (
                                 <div className="pt-4 px-3 border-t border-gray-100 mt-4">
                                     <Link
-                                        to="/dashboard"
+                                        to={user?.isAdmin ? "/admin" : "/dashboard"}
                                         onClick={() => setIsOpen(false)}
                                         className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl mb-4"
                                     >
@@ -143,7 +143,7 @@ export const Navbar = () => {
                                         </div>
                                         <div>
                                             <p className="font-bold text-gray-900">{user?.fullName}</p>
-                                            <p className="text-sm text-gray-500">View Dashboard</p>
+                                            <p className="text-sm text-gray-500">View {user?.isAdmin ? 'Admin' : ''} Dashboard</p>
                                         </div>
                                     </Link>
                                     <button

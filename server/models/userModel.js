@@ -3,7 +3,12 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    email: { 
+        type: String, 
+        required: true, 
+        unique: true,
+        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
+    },
     password: { type: String, required: true },
     gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
     age: { type: Number, required: true },
@@ -59,10 +64,22 @@ const userSchema = new mongoose.Schema({
         read: { type: Boolean, default: false },
         createdAt: { type: Date, default: Date.now }
     }],
+    resetPasswordToken: { type: String },
+    resetPasswordExpire: { type: Date },
+    verificationCode: { type: String },
+    verificationCodeExpire: { type: Date },
     lastActive: { type: Date, default: Date.now }
 }, {
     timestamps: true
 });
+
+// Add indexes for common search fields
+userSchema.index({ gender: 1 });
+userSchema.index({ religion: 1 });
+userSchema.index({ age: 1 });
+userSchema.index({ 'location.city': 1 });
+userSchema.index({ isAdmin: 1 });
+
 
 // Hash password before saving
 userSchema.pre('save', async function () {

@@ -9,6 +9,9 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { EditProfilePage } from './pages/EditProfilePage';
 import { AdminPage } from './pages/AdminPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ScrollToTop } from './components/ScrollToTop';
 
@@ -48,6 +51,9 @@ function App() {
           {/* Auth Routes (No Navbar/Footer) */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Router>

@@ -13,7 +13,7 @@ const createCheckoutSession = async (req, res) => {
         const userId = req.user._id;
 
         const options = {
-            amount: 100, // 1INR in paise
+            amount: 9000000, // 1INR in paise
             currency: 'INR',
             receipt: `receipt_order_${userId}`
         };
@@ -55,7 +55,7 @@ const verifyPayment = async (req, res) => {
                     user: userId,
                     razorpay_order_id,
                     razorpay_payment_id,
-                    amount: 1, // Since we hardcoded 100 paise
+                    amount: 9000000, // Since we hardcoded 100 paise
                     currency: 'INR',
                     status: 'Success',
                     plan: 'Gold'

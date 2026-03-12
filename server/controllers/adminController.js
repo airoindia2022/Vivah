@@ -8,7 +8,7 @@ const generateToken = require('../utils/generateToken');
 const getAllUsers = async (req, res) => {
     try {
         const { search, gender, subscription, page = 1, limit = 20 } = req.query;
-        let query = {};
+        let query = { isAdmin: { $ne: true } }; // Never show other admins or self in user directory
 
         if (search) {
             query.$or = [
@@ -92,22 +92,23 @@ const toggleVerify = async (req, res) => {
 // @access  Admin
 const getStats = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments();
-        const maleUsers = await User.countDocuments({ gender: 'Male' });
-        const femaleUsers = await User.countDocuments({ gender: 'Female' });
-        const verifiedUsers = await User.countDocuments({ isVerified: true });
-        const premiumUsers = await User.countDocuments({ subscriptionTier: { $in: ['Gold', 'Diamond', 'Silver'] } });
+        const totalUsers = await User.countDocuments({ isAdmin: { $ne: true } });
+        const maleUsers = await User.countDocuments({ gender: 'Male', isAdmin: { $ne: true } });
+        const femaleUsers = await User.countDocuments({ gender: 'Female', isAdmin: { $ne: true } });
+        const verifiedUsers = await User.countDocuments({ isVerified: true, isAdmin: { $ne: true } });
+        const premiumUsers = await User.countDocuments({ subscriptionTier: { $in: ['Gold', 'Diamond', 'Silver'] }, isAdmin: { $ne: true } });
 
         // New registrations in last 7 days
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const newUsers = await User.countDocuments({ createdAt: { $gte: sevenDaysAgo } });
+        const newUsers = await User.countDocuments({ createdAt: { $gte: sevenDaysAgo }, isAdmin: { $ne: true } });
 
         // Subscription breakdown
         const subscriptionBreakdown = await User.aggregate([
+            { $match: { isAdmin: { $ne: true } } }, // Exclude admins from breakdown
             { $group: { _id: '$subscriptionTier', count: { $sum: 1 } } }
         ]);
 
-        // Total Revenue
+        // Total Revenue (transactions are not directly tied to isAdmin status of the user who made them, but rather the transaction itself)
         const revenueData = await Transaction.aggregate([
             { $match: { status: 'Success' } },
             { $group: { _id: null, total: { $sum: '$amount' } } }

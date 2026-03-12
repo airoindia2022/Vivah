@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Heart, User, MapPin, Briefcase, Camera, ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
-import { profileService } from '../services/api';
+import { profileService, authService } from '../services/api';
 
 export const RegisterPage = () => {
     const [step, setStep] = useState(1);
@@ -23,6 +23,47 @@ export const RegisterPage = () => {
         education: '',
         photos: [] as string[]
     });
+
+    const [showOTP, setShowOTP] = useState(false);
+    const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+
+    const handleSendOTP = async () => {
+        if (!formData.fullName || !formData.email || !formData.password) {
+            setError('Please fill in all basic details');
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            await authService.sendOTP(formData.email);
+            setShowOTP(true);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to send verification code');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyOTP = async () => {
+        const code = otpCode.join('');
+        if (code.length !== 6) {
+            setError('Please enter all 6 digits');
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            await authService.verifyOTP(formData.email, code);
+            setIsEmailVerified(true);
+            setShowOTP(false);
+            setStep(2);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Invalid verification code');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -51,8 +92,8 @@ export const RegisterPage = () => {
     };
 
     const nextStep = () => {
-        if (step === 1 && (!formData.fullName || !formData.email || !formData.password)) {
-            setError('Please fill in all basic details');
+        if (step === 1 && !isEmailVerified) {
+            handleSendOTP();
             return;
         }
         if (step === 2 && (!formData.city || !formData.profession || !formData.education)) {
@@ -63,14 +104,20 @@ export const RegisterPage = () => {
         setStep(s => s + 1);
     };
 
-    const prevStep = () => setStep(s => s - 1);
+    const prevStep = () => {
+        if (showOTP) {
+            setShowOTP(false);
+        } else {
+            setStep(s => s - 1);
+        }
+    };
 
     const handleSubmit = async () => {
         setLoading(true);
         setError(null);
         try {
-            await registerUser(formData);
-            navigate('/dashboard');
+            const res = await registerUser(formData);
+            navigate(res?.isAdmin ? '/admin' : '/dashboard');
         } catch (err: any) {
             setError(err.message || 'Registration failed');
         } finally {
@@ -129,7 +176,7 @@ export const RegisterPage = () => {
                     )}
 
                     <AnimatePresence mode="wait">
-                        {step === 1 && (
+                        {step === 1 && !showOTP && (
                             <motion.div
                                 key="step1"
                                 initial={{ opacity: 0, x: 20 }}
@@ -204,8 +251,70 @@ export const RegisterPage = () => {
                                 </div>
 
                                 <div className="pt-8">
-                                    <button onClick={nextStep} className="w-full btn-primary py-5 rounded-2xl text-lg flex items-center justify-center shadow-xl shadow-brand-200">
-                                        Next Step <ChevronRight className="ml-2 w-5 h-5" />
+                                    <button onClick={nextStep} className="w-full btn-primary py-5 rounded-2xl text-lg flex items-center justify-center shadow-xl shadow-brand-200 font-bold">
+                                        Verify Email <ChevronRight className="ml-2 w-5 h-5" />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {step === 1 && showOTP && (
+                            <motion.div
+                                key="otp-step"
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                            >
+                                <div className="text-center mb-8">
+                                    <h2 className="text-3xl font-bold font-display">Verify your email</h2>
+                                    <p className="text-gray-500">We've sent a code to <span className="font-bold text-gray-900">{formData.email}</span></p>
+                                    {error && <p className="text-red-500 text-sm mt-4 font-bold">{error}</p>}
+                                </div>
+
+                                <div className="flex justify-between gap-2 max-w-xs mx-auto">
+                                    {otpCode.map((digit, idx) => (
+                                        <input
+                                            key={idx}
+                                            id={`otp-reg-${idx}`}
+                                            type="text"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (!/^\d*$/.test(val)) return;
+                                                const newOtp = [...otpCode];
+                                                newOtp[idx] = val.slice(-1);
+                                                setOtpCode(newOtp);
+                                                if (val && idx < 5) document.getElementById(`otp-reg-${idx + 1}`)?.focus();
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Backspace' && !otpCode[idx] && idx > 0) document.getElementById(`otp-reg-${idx - 1}`)?.focus();
+                                            }}
+                                            className="w-12 h-14 text-center text-2xl font-black bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:bg-white outline-none"
+                                        />
+                                    ))}
+                                </div>
+
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-500 font-medium">
+                                        Didn't receive the code?{' '}
+                                        <button 
+                                            type="button"
+                                            onClick={handleSendOTP}
+                                            className="text-brand-600 font-bold hover:underline"
+                                        >
+                                            Resend Code
+                                        </button>
+                                    </p>
+                                </div>
+
+                                <div className="pt-8 grid grid-cols-2 gap-4">
+                                    <button onClick={prevStep} className="py-5 border border-gray-200 rounded-2xl font-bold text-gray-700 flex items-center justify-center hover:bg-gray-50">
+                                        <ChevronLeft className="mr-2 w-5 h-5" /> Back
+                                    </button>
+                                    <button onClick={handleVerifyOTP} className="btn-primary py-5 rounded-2xl text-lg font-bold flex items-center justify-center shadow-xl shadow-brand-200">
+                                        Verify & Continue <ChevronRight className="ml-2 w-5 h-5" />
                                     </button>
                                 </div>
                             </motion.div>

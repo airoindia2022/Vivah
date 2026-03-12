@@ -22,11 +22,13 @@ interface AuthState {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
-    login: (credentials: any) => Promise<void>;
-    register: (userData: any) => Promise<void>;
+    login: (credentials: any) => Promise<any>;
+    register: (userData: any) => Promise<any>;
+    verifyEmailCode: (email: string, code: string) => Promise<void>;
     logout: () => void;
     updateUser: (userData: Partial<User>) => void;
     toggleShortlistStore: (id: string) => void;
+    setAuth: (user: User, token: string) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -38,27 +40,40 @@ export const useAuthStore = create<AuthState>()(
             login: async (credentials) => {
                 try {
                     const data = await authService.login(credentials);
-                    set({
-                        user: data,
-                        token: data.token,
-                        isAuthenticated: true
-                    });
+                    if (!data.requiresVerification) {
+                        set({
+                            user: data,
+                            token: data.token,
+                            isAuthenticated: true
+                        });
+                    }
+                    return data;
                 } catch (error: any) {
-                    throw new Error(error.response?.data?.message || 'Login failed');
+                    throw error;
                 }
             },
             register: async (userData) => {
                 try {
                     const data = await authService.register(userData);
+                    // Registration now always requires verification
+                    return data;
+                } catch (error: any) {
+                    throw error;
+                }
+            },
+            verifyEmailCode: async (email, code) => {
+                try {
+                    const data = await authService.verifyEmail(email, code);
                     set({
                         user: data,
                         token: data.token,
                         isAuthenticated: true
                     });
                 } catch (error: any) {
-                    throw new Error(error.response?.data?.message || 'Registration failed');
+                    throw error;
                 }
             },
+            setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
             logout: () => set({ user: null, token: null, isAuthenticated: false }),
             updateUser: (userData) =>
                 set((state) => ({

@@ -1,25 +1,35 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import {
     Heart, Eye, Settings,
-    ChevronRight, Star, Bell, Edit2
+    ChevronRight, Star, Edit2, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { ProfileCard } from '../components/ProfileCard';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
 
 import { useQuery } from '@tanstack/react-query';
 import { profileService } from '../services/api';
 
 export const DashboardPage = () => {
     const { user } = useAuthStore();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = React.useState<'recommended' | 'shortlisted'>('recommended');
 
+    React.useEffect(() => {
+        if (user?.isAdmin) {
+            navigate('/admin', { replace: true });
+        }
+    }, [user, navigate]);
 
-    const { data: recommendations, isLoading: loadingRecs } = useQuery({
+    const { data: recommendations, isLoading: loadingRecs, isError: errorRecs } = useQuery({
         queryKey: ['recommendations'],
-        queryFn: () => profileService.getProfiles({ gender: user?.gender === 'Male' ? 'Female' : 'Male' }),
+        queryFn: () => profileService.getProfiles({ 
+            gender: user?.gender === 'Male' ? 'Female' : 'Male',
+            limit: 4 
+        }),
         enabled: !!user,
+        staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
     const { data: shortlisted, isLoading: loadingShortlisted } = useQuery({
@@ -34,204 +44,333 @@ export const DashboardPage = () => {
         enabled: !!user,
     });
 
-    const { data: notifications } = useQuery({
-        queryKey: ['notifications'],
-        queryFn: profileService.getNotifications,
-        enabled: !!user,
-        refetchInterval: 30000,
-    });
 
-    const shortlistedCount = shortlisted?.length || 0;
-    const unreadNotificationsCount = notifications?.filter((n: any) => !n.read).length || 0;
+    // Dynamic Completeness Calculation
+    const completeness = useMemo(() => {
+        if (!user) return 0;
+        let score = 0;
+        if (user.fullName) score += 20;
+        if (user.age) score += 10;
+        if (user.gender) score += 10;
+        if (user.location?.city) score += 10;
+        if (user.bio) score += 20;
+        if (user.photos && user.photos.length > 0) score += 20;
+        if (user.profession) score += 10;
+        return score;
+    }, [user]);
 
     const stats = [
-        { label: 'Shortlisted', count: shortlistedCount, icon: <Heart className="text-pink-500" />, bg: 'bg-pink-50', link: '/search' },
-        { label: 'Interests Received', count: 0, icon: <Star className="text-brand-500" />, bg: 'bg-brand-50', link: '/dashboard' },
-        { label: 'Profile Views', count: visitors?.length || '0', icon: <Eye className="text-blue-500" />, bg: 'bg-blue-50', link: '/dashboard' },
+        { 
+            label: 'Matches', 
+            count: recommendations?.length || 0, 
+            icon: <Star className="text-brand-500" />, 
+            bg: 'bg-brand-50', 
+            link: '/search' 
+        },
+        { 
+            label: 'Shortlisted', 
+            count: shortlisted?.length || 0, 
+            icon: <Heart className="text-pink-500" />, 
+            bg: 'bg-pink-50', 
+            link: '/search' 
+        },
+        { 
+            label: 'Profile Views', 
+            count: visitors?.length || 0, 
+            icon: <Eye className="text-blue-500" />, 
+            bg: 'bg-blue-50', 
+            link: '/dashboard' 
+        },
     ];
 
+    if (!user) return null;
+
     return (
-        <div className="bg-gray-50 min-h-screen">
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-                    <div className="flex items-center space-x-6">
-                        <div className="relative group">
-                            <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white shadow-xl">
-                                <img src={user?.photos?.[0] || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="" />
+        <div className="bg-slate-50 min-h-screen">
+            <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+                {/* Modernized Header */}
+                <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+                    <div className="flex items-center space-x-8">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="relative"
+                        >
+                            <div className="w-28 h-28 rounded-[2.5rem] overflow-hidden border-4 border-white shadow-2xl ring-8 ring-brand-500/5">
+                                <img 
+                                    src={user.photos?.[0] || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=f97316&color=fff&size=128`} 
+                                    className="w-full h-full object-cover" 
+                                    alt={user.fullName} 
+                                />
                             </div>
-                            <Link to="/profile/edit" className="absolute -bottom-2 -right-2 p-2 bg-brand-600 text-white rounded-xl shadow-lg hover:bg-brand-700 transition-all opacity-0 group-hover:opacity-100">
+                            <Link 
+                                to="/profile/edit" 
+                                className="absolute -bottom-2 -right-2 p-2.5 bg-brand-600 text-white rounded-2xl shadow-xl hover:bg-brand-700 transition-all hover:scale-110 active:scale-95"
+                                title="Edit Profile"
+                            >
                                 <Edit2 className="w-4 h-4" />
                             </Link>
-                        </div>
-                        <div>
-                            <h1 className="text-4xl font-extrabold font-display text-gray-900">Welcome, {user?.fullName.split(' ')[0]}!</h1>
-                            <p className="text-gray-500 font-medium">Your profile is {user?.bio && user?.photos?.length > 0 ? '95' : '85'}% complete. {(!user?.bio || user?.photos?.length === 0) && 'Complete your profile to find better matches.'}</p>
+                        </motion.div>
+                        
+                        <div className="space-y-1">
+                            <motion.h1 
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                className="text-4xl lg:text-5xl font-black font-display text-slate-900"
+                            >
+                                Hi, {user.fullName.split(' ')[0]}!
+                            </motion.h1>
+                            <p className="text-slate-500 font-bold flex items-center gap-2">
+                                {completeness === 100 ? (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                        <span>Profile fully verified & optimized</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                                        <span>Your profile is {completeness}% complete</span>
+                                    </>
+                                )}
+                            </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-4">
-                        <div className="relative">
-                            <button className="p-4 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-brand-600 shadow-sm transition-all relative">
-                                <Bell className="w-6 h-6" />
-                                {unreadNotificationsCount > 0 && (
-                                    <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 border-2 border-white rounded-full" />
-                                )}
-                            </button>
-                        </div>
-                        <Link to="/profile/edit" className="flex items-center space-x-2 px-6 py-4 bg-white border border-gray-100 rounded-2xl text-gray-700 font-bold shadow-sm hover:shadow-md transition-all">
-                            <Settings className="w-5 h-5" />
-                            <span>Account Settings</span>
+                    <div className="flex items-center gap-4">
+                        <Link to="/profile/edit" className="flex items-center gap-2 px-8 py-4 bg-white border border-slate-100 rounded-[1.5rem] text-slate-700 font-black text-sm shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                            <Settings className="w-5 h-5 text-slate-400" />
+                            <span>Dashboard Settings</span>
                         </Link>
                     </div>
                 </header>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                {/* Performance Stats Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
                     {stats.map((s, i) => (
-                        <Link
+                        <motion.div
                             key={i}
-                            to={s.link}
-                            className="bg-white p-6 rounded-[2rem] border border-gray-50 shadow-sm flex flex-col items-center text-center group hover:scale-105 transition-all cursor-pointer"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
                         >
-                            <div className={`w-14 h-14 ${s.bg} rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-12`}>
-                                {React.cloneElement(s.icon as React.ReactElement<{ className?: string }>, { className: 'w-7 h-7' })}
-                            </div>
-                            <p className="text-3xl font-extrabold text-gray-900 mb-1">{s.count}</p>
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tighter">{s.label}</p>
-                        </Link>
+                            <Link
+                                to={s.link}
+                                className="bg-white p-6 rounded-[2.5rem] border border-slate-50 shadow-sm flex flex-col items-center text-center group hover:shadow-2xl hover:shadow-brand-500/10 transition-all cursor-pointer relative overflow-hidden"
+                            >
+                                <div className={`w-16 h-16 ${s.bg} rounded-3xl flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:rotate-6`}>
+                                    {React.cloneElement(s.icon as React.ReactElement<{ className?: string }>, { className: 'w-8 h-8' })}
+                                </div>
+                                <p className="text-4xl font-black text-slate-900 mb-0.5 tracking-tighter">{s.count}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
+                            </Link>
+                        </motion.div>
                     ))}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                    {/* Main Activity Area */}
+                    {/* Main Content (Recommendations & Shortlist) */}
                     <div className="lg:col-span-2 space-y-12">
                         <section>
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                                <div className="flex bg-gray-100 p-1 rounded-2xl">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                                <div className="flex bg-slate-200/50 p-1.5 rounded-[1.25rem] w-full sm:w-fit">
                                     <button
                                         onClick={() => setActiveTab('recommended')}
-                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'recommended' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        className={`flex-1 sm:flex-none px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all ${activeTab === 'recommended' ? 'bg-white text-brand-600 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
-                                        Recommendations
+                                        Member Match
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('shortlisted')}
-                                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === 'shortlisted' ? 'bg-white text-brand-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                        className={`flex-1 sm:flex-none px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all ${activeTab === 'shortlisted' ? 'bg-white text-brand-600 shadow-lg' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         Shortlisted
                                     </button>
                                 </div>
-                                <Link to="/search" className="text-brand-600 font-bold text-sm hover:underline flex items-center">
-                                    View All <ChevronRight className="ml-1 w-4 h-4" />
+                                <Link to="/search" className="text-brand-600 font-black text-xs uppercase tracking-widest hover:text-brand-700 flex items-center gap-1 group">
+                                    Browse Directory <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                 </Link>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                                {activeTab === 'recommended' ? (
-                                    loadingRecs ? (
-                                        <div className="col-span-full py-10 text-center">
-                                            <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-4" />
-                                            <p className="text-gray-500 font-bold">Finding matches...</p>
-                                        </div>
-                                    ) : recommendations?.length === 0 ? (
-                                        <div className="col-span-full py-20 bg-white rounded-[2.5rem] border border-gray-100 border-dashed text-center">
-                                            <p className="text-gray-400 font-medium">No recommendations yet.</p>
-                                        </div>
+                            <AnimatePresence mode="wait">
+                                <motion.div 
+                                    key={activeTab}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    className="grid grid-cols-1 sm:grid-cols-2 gap-8"
+                                >
+                                    {activeTab === 'recommended' ? (
+                                        loadingRecs ? (
+                                            Array(2).fill(0).map((_, i) => (
+                                                <div key={i} className="h-80 bg-white rounded-[2.5rem] animate-pulse shadow-sm" />
+                                            ))
+                                        ) : errorRecs ? (
+                                            <div className="col-span-full py-16 text-center bg-rose-50 rounded-[2.5rem] border border-rose-100 p-8">
+                                                <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+                                                <h4 className="text-lg font-bold text-rose-900">Connection Issue</h4>
+                                                <p className="text-rose-600 font-medium text-sm mt-1 mb-6">We're having trouble loading recommendations at the moment.</p>
+                                                <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all">Try Again</button>
+                                            </div>
+                                        ) : recommendations?.length === 0 ? (
+                                            <div className="col-span-full py-24 bg-white rounded-[3rem] border-2 border-slate-100 border-dashed text-center p-12">
+                                                <p className="text-slate-400 font-black text-lg">No matches found yet.</p>
+                                                <p className="text-slate-400 font-medium text-sm mt-2 italic">Try updating your preferences or bio for better visibility.</p>
+                                                <Link to="/profile/edit" className="mt-8 inline-block px-10 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-700 shadow-xl shadow-brand-500/20 transform hover:-translate-y-1 transition-all">Update Preferences</Link>
+                                            </div>
+                                        ) : (
+                                            recommendations?.slice(0, 4).map((profile: any) => (
+                                                <ProfileCard key={profile.id} profile={profile} />
+                                            ))
+                                        )
                                     ) : (
-                                        recommendations?.slice(0, 4).map((profile: any) => (
-                                            <ProfileCard key={profile.id} profile={profile} />
-                                        ))
-                                    )
-                                ) : (
-                                    loadingShortlisted ? (
-                                        <div className="col-span-full py-10 text-center">
-                                            <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-4" />
-                                            <p className="text-gray-500 font-bold">Fetching your favorites...</p>
-                                        </div>
-                                    ) : shortlisted?.length === 0 ? (
-                                        <div className="col-span-full py-20 bg-white rounded-[2.5rem] border border-gray-100 border-dashed text-center">
-                                            <Heart className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                                            <p className="text-gray-400 font-medium">Your shortlist is empty.</p>
-                                            <Link to="/search" className="text-brand-600 font-bold mt-2 inline-block">Start exploring</Link>
-                                        </div>
-                                    ) : (
-                                        shortlisted?.map((profile: any) => (
-                                            <ProfileCard key={profile.id} profile={profile} />
-                                        ))
-                                    )
-                                )}
-                            </div>
+                                        loadingShortlisted ? (
+                                            Array(2).fill(0).map((_, i) => (
+                                                <div key={i} className="h-80 bg-white rounded-[2.5rem] animate-pulse shadow-sm" />
+                                            ))
+                                        ) : shortlisted?.length === 0 ? (
+                                            <div className="col-span-full py-24 bg-white rounded-[3rem] border-2 border-slate-100 border-dashed text-center p-12">
+                                                <Heart className="w-16 h-16 text-slate-100 mx-auto mb-6" />
+                                                <p className="text-slate-400 font-black text-lg">Your shortlist is empty.</p>
+                                                <p className="text-slate-400 font-medium text-sm mt-1">Found someone you like? Hit the heart icon to save them here.</p>
+                                                <Link to="/search" className="mt-8 inline-block px-10 py-4 border-2 border-brand-600 text-brand-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-50 transition-all">Start Exploring</Link>
+                                            </div>
+                                        ) : (
+                                            shortlisted?.map((profile: any) => (
+                                                <ProfileCard key={profile.id} profile={profile} />
+                                            ))
+                                        )
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
                         </section>
 
+                        {/* Visitors Section */}
                         <section>
                             <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-2xl font-extrabold font-display">Latest Visitors</h2>
-                                <span className="text-xs font-bold text-gray-400 uppercase bg-gray-100 px-3 py-1 rounded-full">Updated Live</span>
+                                <h2 className="text-3xl font-black font-display text-slate-900 tracking-tight">Recent Profile Visits</h2>
+                                <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest bg-brand-50 px-4 py-1.5 rounded-full ring-1 ring-brand-500/20">Live Sync</span>
                             </div>
-                            <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
                                 {loadingVisitors ? (
-                                    <div className="p-10 text-center">
-                                        <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto" />
+                                    <div className="p-20 text-center">
+                                        <div className="w-10 h-10 border-[5px] border-slate-100 border-t-brand-600 rounded-full animate-spin mx-auto" />
                                     </div>
                                 ) : visitors?.length === 0 ? (
-                                    <div className="p-10 text-center text-gray-400 font-medium">
-                                        No visitors yet.
+                                    <div className="p-20 text-center text-slate-400 font-bold italic">
+                                        No recent visits tracked yet.
                                     </div>
                                 ) : (
-                                    visitors?.map((visitor: any) => (
-                                        <Link
-                                            to={`/profile/${visitor.user._id}`}
-                                            key={visitor._id}
-                                            className="flex items-center justify-between p-6 border-b border-gray-50 hover:bg-gray-50 transition-all cursor-pointer group last:border-0"
-                                        >
-                                            <div className="flex items-center space-x-4">
-                                                <img src={visitor.user.photos?.[0] || 'https://via.placeholder.com/150'} className="w-16 h-16 rounded-2xl object-cover" alt="" />
-                                                <div>
-                                                    <p className="font-bold text-gray-900 text-lg group-hover:text-brand-600 transition-colors">{visitor.user.fullName}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {visitor.user.age} yrs, {visitor.user.location?.city}
-                                                    </p>
+                                    <div className="divide-y divide-slate-50">
+                                        {visitors?.slice(0, 5).map((visitor: any) => (
+                                            <Link
+                                                to={`/profile/${visitor.user._id}`}
+                                                key={visitor._id}
+                                                className="flex items-center justify-between p-8 hover:bg-slate-50 transition-all cursor-pointer group"
+                                            >
+                                                <div className="flex items-center space-x-6">
+                                                    <div className="relative">
+                                                        <img 
+                                                            src={visitor.user.photos?.[0] || 'https://via.placeholder.com/150'} 
+                                                            className="w-20 h-20 rounded-[2rem] object-cover ring-4 ring-white shadow-lg" 
+                                                            alt="" 
+                                                        />
+                                                        {visitor.user.isVerified && <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 border-4 border-white rounded-full flex items-center justify-center text-white text-[8px]"><CheckCircle2 size={12} /></div>}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-xl group-hover:text-brand-600 transition-colors tracking-tight">{visitor.user.fullName}</p>
+                                                        <p className="text-sm text-slate-500 font-medium">
+                                                            {visitor.user.age} yrs • {visitor.user.location?.city || 'India'} • {visitor.user.profession || 'Professional'}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase">{new Date(visitor.visitedAt).toLocaleDateString()}</p>
-                                            </div>
-                                        </Link>
-                                    ))
+                                                <div className="text-right flex flex-col items-end gap-2">
+                                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{new Date(visitor.visitedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</p>
+                                                    <ChevronRight className="w-5 h-5 text-slate-300 group-hover:translate-x-1 transition-transform group-hover:text-brand-500" />
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </section>
                     </div>
 
-                    {/* Sidebar */}
+                    {/* Sidebar / Optimization Cards */}
                     <div className="space-y-8">
-
-                        <section className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                            <h3 className="text-xl font-bold font-display mb-6">Profile Completeness</h3>
+                        {/* Profile optimization card */}
+                        <motion.section 
+                            initial={{ x: 20, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            className="bg-brand-600 p-10 rounded-[3rem] shadow-2xl shadow-brand-500/30 text-white relative overflow-hidden group"
+                        >
+                            <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all duration-700" />
+                            
+                            <h3 className="text-2xl font-black font-display mb-2 drop-shadow-md">Profile Optimization</h3>
+                            <p className="text-brand-100 text-sm font-medium mb-8 leading-relaxed italic opacity-90">Maximize your reach by completing 100% of your profile details.</p>
+                            
                             <div className="space-y-6">
-                                <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: 0 }}
-                                        animate={{ width: '85%' }}
-                                        transition={{ duration: 1, ease: 'easeOut' }}
-                                        className="absolute inset-y-0 left-0 bg-brand-500"
-                                    />
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-sm font-black uppercase tracking-widest">{completeness}% Complete</span>
+                                        <span className="text-xs font-medium text-brand-200">Level {Math.floor(completeness/25)+1}</span>
+                                    </div>
+                                    <div className="relative h-3 bg-brand-900/30 rounded-full overflow-hidden backdrop-blur-sm">
+                                        <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${completeness}%` }}
+                                            className="absolute inset-y-0 left-0 bg-white shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+                                        />
+                                    </div>
                                 </div>
-                                <ul className="space-y-4">
+                                
+                                <ul className="space-y-3 pt-4 border-t border-white/10">
                                     {[
-                                        { text: 'Basic Details', done: true },
-                                        { text: 'Professional Bio', done: true },
-                                        { text: 'Partner Preferences', done: true },
-                                        { text: 'Horoscope/Astronomy', done: false },
-                                        { text: 'Family Information', done: true },
+                                        { text: 'Basic Identity', done: !!user.fullName && !!user.age },
+                                        { text: 'Professional Bio', done: !!user.bio },
+                                        { text: 'Verify Photos', done: user.photos && user.photos.length > 0 },
+                                        { text: 'Partner Preferences', done: true }, // Placeholder logic
+                                        { text: 'Family Information', done: !!user.profession }, // Mock check
                                     ].map((item, i) => (
                                         <li key={i} className="flex items-center justify-between text-sm">
-                                            <span className={item.done ? 'text-gray-900 font-medium' : 'text-gray-400'}>{item.text}</span>
-                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.done ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-300'}`}>
-                                                <ChevronRight className="w-3 h-3" />
-                                            </div>
+                                            <span className={`font-bold tracking-tight ${item.done ? 'text-white' : 'text-brand-200 opacity-60'}`}>{item.text}</span>
+                                            {item.done ? (
+                                                <CheckCircle2 className="w-5 h-5 text-brand-300" />
+                                            ) : (
+                                                <div className="w-2 h-2 rounded-full bg-brand-200/30" />
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
+
+                                {completeness < 100 && (
+                                    <Link 
+                                        to="/profile/edit" 
+                                        className="mt-4 w-full py-4 bg-white text-brand-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-50 shadow-xl transform active:scale-95 transition-all block text-center"
+                                    >
+                                        Optimize Now
+                                    </Link>
+                                )}
+                            </div>
+                        </motion.section>
+
+                        {/* Safety Tips Card */}
+                        <section className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl text-white">
+                            <h3 className="text-xl font-bold font-display mb-6 flex items-center gap-3">
+                                <ShieldCheck className="text-brand-500" />
+                                <span>Safe Search</span>
+                            </h3>
+                            <div className="space-y-6">
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tighter">Gold Rule</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed italic">Never share bank details or OTPs with anyone claiming to be from our staff.</p>
+                                </div>
+                                <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                                    <p className="text-xs font-bold text-slate-400 mb-1 uppercase tracking-tighter">Verified Only</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed italic">Look for the blue checkmark to ensure identity authenticity.</p>
+                                </div>
+                                <button className="w-full py-3 text-xs font-bold text-slate-400 hover:text-white transition-colors underline decoration-brand-500 decoration-2 underline-offset-4">
+                                    Read Safety Guidelines
+                                </button>
                             </div>
                         </section>
                     </div>
@@ -240,3 +379,7 @@ export const DashboardPage = () => {
         </div>
     );
 };
+
+const ShieldCheck = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+);

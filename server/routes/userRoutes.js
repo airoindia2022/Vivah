@@ -12,12 +12,24 @@ const {
     getNotifications,
     markNotificationRead,
     uploadImage,
+    forgotPassword,
+    resetPassword,
+    verifyEmail,
+    sendOTP,
+    verifyOTP,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const { upload } = require('../config/cloudinary');
+const { validate, registerSchema, loginSchema } = require('../middleware/validateMiddleware');
 
-router.post('/login', authUser);
-router.post('/register', registerUser);
+router.post('/login', validate(loginSchema), authUser);
+router.post('/register', validate(registerSchema), registerUser);
+
+router.post('/send-otp', sendOTP);
+router.post('/verify-otp', verifyOTP);
+router.post('/verify-email', verifyEmail);
+router.post('/forgotpassword', forgotPassword);
+router.put('/resetpassword/:resettoken', resetPassword);
 router.get('/profiles', getProfiles);
 router.get('/profile/:id', getProfileById);
 router.put('/profile', protect, updateProfile);

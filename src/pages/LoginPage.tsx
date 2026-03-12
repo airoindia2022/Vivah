@@ -30,10 +30,14 @@ export const LoginPage = () => {
     const onSubmit = async (data: LoginFormValues) => {
         setError(null);
         try {
-            await login(data);
-            navigate('/dashboard');
+            const res = await login(data);
+            if (res.requiresVerification) {
+                navigate('/verify-email', { state: { email: data.email } });
+                return;
+            }
+            navigate(res.isAdmin ? '/admin' : '/dashboard');
         } catch (err: any) {
-            setError(err.message || 'Invalid email or password');
+            setError(err.response?.data?.message || 'Invalid email or password');
         }
     };
 
@@ -105,7 +109,7 @@ export const LoginPage = () => {
                                 <label className="ml-2 block text-sm text-gray-700 font-medium">Remember me</label>
                             </div>
                             <div className="text-sm">
-                                <a href="#" className="font-bold text-brand-600 hover:text-brand-500">Forgot password?</a>
+                                <Link to="/forgot-password" title="Recover your password" id="forgot-password-link" className="font-bold text-brand-600 hover:text-brand-500">Forgot password?</Link>
                             </div>
                         </div>
 

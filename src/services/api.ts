@@ -1,12 +1,13 @@
 import axios from 'axios';
 
-const API_URL = 'https://vivah2.onrender.com/api';
-// const API_URL = 'http://localhost:5000/api';
+// const API_URL = 'https://vivah2.onrender.com/api';
+const API_URL = 'http://localhost:5000/api';
 
 
 const api = axios.create({
     baseURL: API_URL,
 });
+
 
 api.interceptors.request.use((config) => {
     const authStorage = localStorage.getItem('auth-storage');
@@ -26,6 +27,26 @@ export const authService = {
     },
     register: async (userData: any) => {
         const response = await api.post('/users/register', userData);
+        return response.data;
+    },
+    forgotPassword: async (email: string) => {
+        const response = await api.post('/users/forgotpassword', { email });
+        return response.data;
+    },
+    resetPassword: async (token: string, password: string) => {
+        const response = await api.put(`/users/resetpassword/${token}`, { password });
+        return response.data;
+    },
+    verifyEmail: async (email: string, code: string) => {
+        const response = await api.post('/users/verify-email', { email, code });
+        return response.data;
+    },
+    sendOTP: async (email: string) => {
+        const response = await api.post('/users/send-otp', { email });
+        return response.data;
+    },
+    verifyOTP: async (email: string, code: string) => {
+        const response = await api.post('/users/verify-otp', { email, code });
         return response.data;
     },
 };

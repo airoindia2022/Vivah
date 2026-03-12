@@ -1,6 +1,96 @@
 const User = require('../models/userModel');
+const OTP = require('../models/otpModel');
 const generateToken = require('../utils/generateToken');
 const { cloudinary } = require('../config/cloudinary');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
+const asyncHandler = require('../utils/asyncHandler');
+
+
+// @desc    Send OTP to email
+// @route   POST /api/users/send-otp
+// @access  Public
+const sendOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+
+        const userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Save OTP to DB
+        await OTP.findOneAndUpdate(
+            { email },
+            { code: otp, createdAt: Date.now() },
+            { upsert: true, returnDocument: 'after' }
+        );
+
+        // Send OTP Email
+        const message = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #e11d48; text-align: center;">Vivah Email Verification</h2>
+                <p>Hello,</p>
+                <p>Please use the following OTP to verify your email address to begin your Vivah journey:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <h1 style="background-color: #fce7f3; color: #e11d48; padding: 15px; display: inline-block; border-radius: 5px; letter-spacing: 5px;">${otp}</h1>
+                </div>
+                <p>This code will expire in 10 minutes.</p>
+                <p>If you did not request this, please ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #888; text-align: center;">© ${new Date().getFullYear()} Vivah. All rights reserved.</p>
+            </div>
+        `;
+
+        try {
+            await sendEmail({
+                email,
+                subject: 'Verify your email - Vivah',
+                html: message,
+            });
+            res.status(200).json({ message: 'OTP sent successfully' });
+        } catch (emailError) {
+            console.error('Email Send Error:', emailError.message);
+            
+            // In development, we allow registration even if email fails by logging OTP to console
+            if (process.env.NODE_ENV === 'development') {
+                console.log('------------------------------------');
+                console.log('DEVELOPMENT MODE: EMAIL FAILED');
+                console.log(`OTP for ${email}: ${otp}`);
+                console.log('------------------------------------');
+                return res.status(200).json({ 
+                    message: 'OTP sent (Dev Mode: Check Server Logs)',
+                    devMode: true 
+                });
+            }
+            
+            res.status(500).json({ message: 'Error sending verification email' });
+        }
+});
+
+
+// @desc    Verify OTP
+// @route   POST /api/users/verify-otp
+// @access  Public
+const verifyOTP = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+
+        const otpRecord = await OTP.findOne({ email, code });
+
+        if (!otpRecord) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        // OTP is valid
+        res.status(200).json({ message: 'Email verified successfully' });
+    } catch (error) {
+        console.error('Verify OTP Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
 
 const countWords = (str) => {
     if (!str) return 0;
@@ -11,12 +101,18 @@ const countWords = (str) => {
 // @desc    Auth user & get token
 // @route   POST /api/users/login
 // @access  Public
-const authUser = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        const user = await User.findOne({ email });
+const authUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
 
         if (user && (await user.matchPassword(password))) {
+            if (!user.isVerified) {
+                return res.status(401).json({ 
+                    message: 'Please verify your email before logging in',
+                    requiresVerification: true,
+                    email: user.email
+                });
+            }
             res.json({
                 _id: user._id,
                 fullName: user.fullName,
@@ -29,13 +125,11 @@ const authUser = async (req, res) => {
                 token: generateToken(user._id),
             });
         } else {
-            res.status(401).json({ message: 'Invalid email or password' });
-        }
-    } catch (error) {
-        console.error('Auth Error:', error);
-        res.status(500).json({ message: 'Server Error' });
+        res.status(401);
+        throw new Error('Invalid email or password');
     }
-};
+});
+
 
 // @desc    Register a new user
 // @route   POST /api/users
@@ -81,6 +175,7 @@ const registerUser = async (req, res) => {
             interests,
             familyDetails,
             photos: photos || [],
+            isVerified: true, // We assume verification was done in Step 1
         });
 
         if (user) {
@@ -94,7 +189,42 @@ const registerUser = async (req, res) => {
             res.status(400).json({ message: 'Invalid user data' });
         }
     } catch (error) {
-        console.error('Auth Error:', error);
+        console.error('Registration Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Verify email with OTP
+// @route   POST /api/users/verify-email
+// @access  Public
+const verifyEmail = async (req, res) => {
+    try {
+        const { email, code } = req.body;
+
+        const user = await User.findOne({ 
+            email,
+            verificationCode: code,
+            verificationCodeExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired verification code' });
+        }
+
+        user.isVerified = true;
+        user.verificationCode = undefined;
+        user.verificationCodeExpire = undefined;
+        await user.save();
+
+        res.json({
+            message: 'Email verified successfully',
+            _id: user._id,
+            fullName: user.fullName,
+            email: user.email,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        console.error('Verification Error:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };
@@ -140,7 +270,25 @@ const getProfileById = async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-password');
         if (user && user.isAdmin) {
-            return res.status(404).json({ message: 'Profile not found' });
+            // Permit viewing own profile even if admin (needed for Edit Profile page)
+            const authHeader = req.headers.authorization;
+            let isOwnProfile = false;
+            if (authHeader && authHeader.startsWith('Bearer')) {
+                try {
+                    const token = authHeader.split(' ')[1];
+                    // Using a simple decode since we just need the ID to compare
+                    const decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET || 'secret');
+                    if (decoded.id === user._id.toString()) {
+                        isOwnProfile = true;
+                    }
+                } catch (err) {
+                    // Token invalid or expired, proceed with 404 for admin
+                }
+            }
+
+            if (!isOwnProfile) {
+                return res.status(404).json({ message: 'Profile not found' });
+            }
         }
         if (user) {
             // Record visitor if authenticated
@@ -280,7 +428,11 @@ const toggleShortlist = async (req, res) => {
 const getShortlistedProfiles = async (req, res) => {
     try {
         const user = await User.findById(req.user._id).populate('shortlisted', '-password');
-        res.json(user.shortlisted);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // Filter out any null entries from deleted users or admins
+        res.json(user.shortlisted.filter(p => p !== null && !p.isAdmin));
     } catch (error) {
         console.error('Shortlist Fetch Error:', error);
         res.status(500).json({ message: 'Server Error' });
@@ -293,16 +445,20 @@ const getShortlistedProfiles = async (req, res) => {
 const getVisitors = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-            .populate('visitors.user', 'fullName photos age location religion profession');
+            .populate('visitors.user', 'fullName photos age location religion profession isAdmin');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
         // Return unique visitors, sorted by most recent
         const uniqueVisitors = [];
         const seenIds = new Set();
 
-        const sortedVisitors = user.visitors.sort((a, b) => b.visitedAt - a.visitedAt);
+        const sortedVisitors = (user.visitors || []).sort((a, b) => b.visitedAt - a.visitedAt);
 
         for (const visitor of sortedVisitors) {
-            if (!seenIds.has(visitor.user._id.toString())) {
+            if (visitor.user && visitor.user._id && !visitor.user.isAdmin && !seenIds.has(visitor.user._id.toString())) {
                 uniqueVisitors.push(visitor);
                 seenIds.add(visitor.user._id.toString());
             }
@@ -321,9 +477,15 @@ const getVisitors = async (req, res) => {
 const getNotifications = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-            .populate('notifications.from', 'fullName photos');
+            .populate('notifications.from', 'fullName photos isAdmin');
 
-        res.json(user.notifications.sort((a, b) => b.createdAt - a.createdAt));
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Filter out notifications from deleted users or admins
+        const validNotifications = (user.notifications || []).filter(n => n.from !== null && !n.from.isAdmin);
+        res.json(validNotifications.sort((a, b) => b.createdAt - a.createdAt));
     } catch (error) {
         console.error('Notifications Error:', error);
         res.status(500).json({ message: 'Server Error' });
@@ -336,6 +498,9 @@ const getNotifications = async (req, res) => {
 const markNotificationRead = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
         const notification = user.notifications.id(req.params.id);
 
         if (notification) {
@@ -351,7 +516,114 @@ const markNotificationRead = async (req, res) => {
     }
 };
 
+// @desc    Forgot Password
+// @route   POST /api/users/forgotpassword
+// @access  Public
+const forgotPassword = async (req, res) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found with this email' });
+        }
+
+        // Get reset token
+        const resetToken = crypto.randomBytes(20).toString('hex');
+
+        // Hash token and set to resetPasswordToken field
+        user.resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(resetToken)
+            .digest('hex');
+
+        // Set expire
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+        await user.save();
+
+        // Create reset URL
+        const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+
+        const message = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #e11d48; text-align: center;">Vivah Password Reset</h2>
+                <p>Hello ${user.fullName},</p>
+                <p>You are receiving this email because you (or someone else) has requested the reset of a password. Please click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetUrl}" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+                </div>
+                <p>Wait! If you did not request this, please ignore this email and your password will remain unchanged.</p>
+                <p>The link will expire in 10 minutes.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #888; text-align: center;">© ${new Date().getFullYear()} Vivah. All rights reserved.</p>
+            </div>
+        `;
+
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'Password reset token',
+                html: message,
+            });
+
+            res.status(200).json({ message: 'Email sent successfully' });
+        } catch (error) {
+            console.error('Email Error:', error);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+
+            await user.save();
+
+            res.status(500).json({ message: 'Email could not be sent' });
+        }
+    } catch (error) {
+        console.error('Forgot Password Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Reset Password
+// @route   PUT /api/users/resetpassword/:resettoken
+// @access  Public
+const resetPassword = async (req, res) => {
+    try {
+        // Get hashed token
+        const resetPasswordToken = crypto
+            .createHash('sha256')
+            .update(req.params.resettoken)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid token or token expired' });
+        }
+
+        // Set new password
+        user.password = req.body.password;
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.status(200).json({
+            message: 'Password reset successful',
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        console.error('Reset Password Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
 module.exports = {
+    verifyEmail,
+    sendOTP,
+    verifyOTP,
+    forgotPassword,
+    resetPassword,
     authUser,
     registerUser,
     getProfiles,
