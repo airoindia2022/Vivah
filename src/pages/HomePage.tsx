@@ -51,12 +51,12 @@ export const HomePage = () => {
 
     const testimonials = [
         {
-            name: "Aman & Amani",
+            name: "Aman & Shonali",
             photo: "https://res.cloudinary.com/ddd0pijhx/image/upload/v1772124848/vivah_matrimony/ljfqvyctqhsgxxym4ykg.jpg?q=80&w=400&auto=format&fit=crop",
             text: "We found our perfect match within 3 months. The filters helped us find exactly what we were looking for."
         },
         {
-            name: "Aman & Amani",
+            name: "Ravi & Priya",
             photo: "https://res.cloudinary.com/ddd0pijhx/image/upload/v1772124848/vivah_matrimony/ljfqvyctqhsgxxym4ykg.jpg?q=80&w=400&auto=format&fit=crop",
             text: "We found our perfect match within 3 months. The filters helped us find exactly what we were looking for."
         }

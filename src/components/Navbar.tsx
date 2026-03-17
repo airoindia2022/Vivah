@@ -24,7 +24,7 @@ export const Navbar = () => {
                                 <Heart className="text-white w-6 h-6 fill-current" />
                             </div>
                             <span className="text-2xl font-extrabold font-display bg-gradient-to-r from-brand-600 to-primary-600 bg-clip-text text-transparent">
-                                Vivah
+                                Shubh Vivah
                             </span>
                         </Link>
                     </div>

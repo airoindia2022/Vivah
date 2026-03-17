@@ -13,7 +13,7 @@ const Footer = () => (
                             <Heart className="text-white w-5 h-5 fill-current" />
                         </div>
                         <span className="text-xl font-extrabold font-display text-white">
-                            Vivah
+                            Shubh Vivah
                         </span>
                     </div>
                     <p className="text-sm">

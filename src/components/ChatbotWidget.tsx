@@ -37,7 +37,7 @@ interface MatchedProfile {
 const STEPS = [
     {
         key: 'gender',
-        question: "I'm **Vivah AI** — your personal matchmaking guide.\n\nWho are you looking for today?",
+        question: "I'm **Shubh Vivah AI** — your personal matchmaking guide.\n\nWho are you looking for today?",
         icon: '💑',
         choices: ['👨 Groom', '👰 Bride', '🌈 Any Gender'],
         extract: (ans: string) => {
@@ -243,7 +243,7 @@ export const ChatbotWidget = () => {
                     id="chatbot-toggle-btn"
                     className={`cb-fab ${open ? 'cb-fab--open' : ''}`}
                     onClick={() => setOpen(o => !o)}
-                    aria-label="Open Vivah AI matchmaking chatbot"
+                    aria-label="Open Shubh Vivah AI matchmaking chatbot"
                 >
                     <span className={`cb-fab-inner ${open ? 'cb-fab-inner--open' : ''}`}>
                         {open ? (
@@ -272,7 +272,7 @@ export const ChatbotWidget = () => {
                                 <span className="cb-header-dot" />
                             </div>
                             <div>
-                                <p className="cb-header-name">Vivah <span className="cb-header-ai-tag">AI</span></p>
+                                <p className="cb-header-name">Shubh Vivah <span className="cb-header-ai-tag">AI</span></p>
                                 <p className="cb-header-sub">
                                     <span className="cb-header-dot-inline" />
                                     Matchmaking Assistant
@@ -389,7 +389,7 @@ export const ChatbotWidget = () => {
                     {/* Footer */}
                     <div className="cb-footer">
                         <div className="cb-footer-inner">
-                            <span className="cb-footer-logo">💖 Vivah AI</span>
+                            <span className="cb-footer-logo">💖 Shubh Vivah AI</span>
                             <span className="cb-footer-sep">·</span>
                             <span>Tap a choice to continue</span>
                         </div>

@@ -142,7 +142,7 @@ export const RegisterPage = () => {
                             <Heart className="text-white w-6 h-6 fill-current" />
                         </div>
                         <span className="text-2xl font-extrabold font-display bg-gradient-to-r from-brand-600 to-primary-600 bg-clip-text text-transparent italic NOT-italic">
-                            Vivah
+                            Shubh Vivah
                         </span>
                     </Link>
                 </div>
@@ -315,7 +315,7 @@ export const RegisterPage = () => {
                                 <div className="text-center">
                                     <p className="text-sm text-gray-500 font-medium">
                                         Didn't receive the code?{' '}
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={handleSendOTP}
                                             className="text-brand-600 font-bold hover:underline"

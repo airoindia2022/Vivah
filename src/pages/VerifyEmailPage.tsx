@@ -9,11 +9,11 @@ export const VerifyEmailPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    
+
     const location = useLocation();
     const navigate = useNavigate();
     const { verifyEmailCode, user } = useAuthStore();
-    
+
     const email = location.state?.email || '';
 
     useEffect(() => {
@@ -76,12 +76,12 @@ export const VerifyEmailPage = () => {
                             <Heart className="text-white w-6 h-6 fill-current" />
                         </div>
                         <span className="text-2xl font-extrabold font-display bg-gradient-to-r from-brand-600 to-primary-600 bg-clip-text text-transparent">
-                            Vivah
+                            Shubh Vivah
                         </span>
                     </Link>
                 </div>
 
-                <motion.div 
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100"
@@ -145,9 +145,9 @@ export const VerifyEmailPage = () => {
                             <div className="text-center">
                                 <p className="text-sm text-gray-500">
                                     Didn't receive the code?{' '}
-                                    <button 
+                                    <button
                                         type="button"
-                                        onClick={() => {/* Implement resend logic later if needed */}}
+                                        onClick={() => {/* Implement resend logic later if needed */ }}
                                         className="text-brand-600 font-bold hover:underline"
                                     >
                                         Resend Code

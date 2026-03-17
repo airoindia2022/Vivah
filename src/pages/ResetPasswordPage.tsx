@@ -54,7 +54,7 @@ export const ResetPasswordPage = () => {
                             <Heart className="text-white w-7 h-7 fill-current" />
                         </div>
                         <span className="text-3xl font-extrabold font-display bg-gradient-to-r from-brand-600 to-primary-600 bg-clip-text text-transparent">
-                            Vivah
+                            Shubh Vivah
                         </span>
                     </Link>
                 </div>
