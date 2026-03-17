@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://vivah2.onrender.com/api';
+const API_URL = 'https://vivah-u2sy.onrender.com/api';
 
 
 const api = axios.create({

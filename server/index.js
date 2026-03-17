@@ -51,6 +51,8 @@ app.use(mongoSanitize());
 // CORS Configuration
 const allowedOrigins = [
     'http://localhost:5173',
+    'https://shubhvivah.org.in',
+    'https://www.shubhvivah.org.in',
     'https://vivah-plum.vercel.app',
     process.env.FRONTEND_URL,
     process.env.CLIENT_URL
