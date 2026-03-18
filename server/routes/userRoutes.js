@@ -12,6 +12,7 @@ const {
     getNotifications,
     markNotificationRead,
     uploadImage,
+    serveImage,
     forgotPassword,
     resetPassword,
     verifyEmail,
@@ -19,7 +20,7 @@ const {
     verifyOTP,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
-const { upload } = require('../config/cloudinary');
+const { upload } = require('../config/gridfs');
 const { validate, registerSchema, loginSchema } = require('../middleware/validateMiddleware');
 
 router.post('/login', validate(loginSchema), authUser);
@@ -39,5 +40,6 @@ router.get('/visitors', protect, getVisitors);
 router.get('/notifications', protect, getNotifications);
 router.put('/notifications/:id', protect, markNotificationRead);
 router.post('/upload', upload.single('image'), uploadImage);
+router.get('/image/:id', serveImage);
 
 module.exports = router;

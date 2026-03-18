@@ -10,4 +10,7 @@ const connectDB = async () => {
     }
 };
 
+// Export both connectDB and the mongoose connection reference
+// so GridFS can reuse the same connection
 module.exports = connectDB;
+module.exports.connection = mongoose.connection;

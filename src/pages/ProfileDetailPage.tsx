@@ -33,7 +33,7 @@ export const ProfileDetailPage = () => {
                 key: res.key,
                 amount: res.amount,
                 currency: res.currency,
-                name: "Vivah Matrimony",
+                name: "Shubh Vivah Matrimony",
                 description: "Premium Membership",
                 order_id: res.id,
                 handler: async function (response: any) {

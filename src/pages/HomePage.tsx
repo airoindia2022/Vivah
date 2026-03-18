@@ -92,7 +92,7 @@ export const HomePage = () => {
                         </h1>
 
                         <p className="text-xl text-gray-600 max-w-lg leading-relaxed">
-                            Millions of success stories. Start yours today. Join over 5 million happy couples who found their forever on Vivah.
+                            Millions of success stories. Start yours today. Join over 5 million happy couples who found their forever on Shubh Vivah.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4">
@@ -198,7 +198,7 @@ export const HomePage = () => {
             <section className="py-24 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center max-w-3xl mx-auto mb-20">
-                        <h2 className="text-4xl font-extrabold font-display mb-6">Why Choose Vivah?</h2>
+                        <h2 className="text-4xl font-extrabold font-display mb-6">Why Choose Shubh Vivah?</h2>
                         <p className="text-lg text-gray-600">We understand that finding a life partner is a deeply personal journey. Our platform is designed to make it safe, easy, and meaningful.</p>
                     </div>
 

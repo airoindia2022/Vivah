@@ -369,11 +369,11 @@ export const AdminPage = () => {
                             <ShieldCheck size={24} />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold tracking-tight text-white">VIVAH</h1>
+                            <h1 className="text-xl font-bold tracking-tight text-white">SHUBH VIVAH</h1>
                             <p className="text-[10px] font-bold text-brand-500 tracking-[0.2em] -mt-1 uppercase">Admin Console</p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(false)}
                         className="p-2 text-slate-400 hover:text-white lg:hidden"
                     >
@@ -382,7 +382,7 @@ export const AdminPage = () => {
                 </div>
 
                 <nav className="flex-1 px-4 space-y-1 py-4">
-                    <button 
+                    <button
                         onClick={() => { setActiveTab('dashboard'); setIsSidebarOpen(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${activeTab === 'dashboard' ? 'bg-white/5 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                     >
@@ -390,8 +390,8 @@ export const AdminPage = () => {
                         <span className="font-semibold text-sm">Dashboard</span>
                         {activeTab === 'dashboard' && <motion.div layoutId="nav-active" className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500" />}
                     </button>
-                    
-                    <button 
+
+                    <button
                         onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${activeTab === 'users' ? 'bg-white/5 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                     >
@@ -400,7 +400,7 @@ export const AdminPage = () => {
                         {activeTab === 'users' && <motion.div layoutId="nav-active" className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500" />}
                     </button>
 
-                    <button 
+                    <button
                         onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }}
                         className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${activeTab === 'transactions' ? 'bg-white/5 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                     >
@@ -413,7 +413,7 @@ export const AdminPage = () => {
                         <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">External</p>
                     </div>
 
-                    <button 
+                    <button
                         onClick={() => navigate('/')}
                         className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200 group"
                     >
@@ -432,7 +432,7 @@ export const AdminPage = () => {
                             <p className="text-[10px] text-slate-500 truncate">{user?.email}</p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         className="w-full py-2.5 rounded-lg bg-white/5 hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-all duration-200 text-xs font-bold flex items-center justify-center gap-2"
                         onClick={() => navigate('/login')}
                     >
@@ -449,9 +449,9 @@ export const AdminPage = () => {
                         <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center text-white">
                             <ShieldCheck size={18} />
                         </div>
-                        <span className="font-black text-sm tracking-tight text-white uppercase">Vivah Admin</span>
+                        <span className="font-black text-sm tracking-tight text-white uppercase">Shubh Vivah Admin</span>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white transition-colors"
                     >

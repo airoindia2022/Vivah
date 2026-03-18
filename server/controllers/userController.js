@@ -1,10 +1,11 @@
 const User = require('../models/userModel');
 const OTP = require('../models/otpModel');
 const generateToken = require('../utils/generateToken');
-const { cloudinary } = require('../config/cloudinary');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const asyncHandler = require('../utils/asyncHandler');
+const mongoose = require('mongoose');
+const { Readable } = require('stream');
 
 
 // @desc    Send OTP to email
@@ -390,7 +391,7 @@ const updateProfile = async (req, res) => {
     }
 };
 
-// @desc    Upload image to Cloudinary
+// @desc    Upload image to GridFS
 // @route   POST /api/users/upload
 // @access  Private
 const uploadImage = async (req, res) => {
@@ -398,10 +399,77 @@ const uploadImage = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
-        res.json({ url: req.file.path });
+
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+            bucketName: 'photos',
+        });
+
+        const filename = `${Date.now()}-${req.file.originalname.replace(/\s+/g, '_')}`;
+        const uploadStream = bucket.openUploadStream(filename, {
+            contentType: req.file.mimetype,
+            metadata: { 
+                uploadedBy: req.user ? req.user._id : null,
+                originalName: req.file.originalname
+            }
+        });
+
+        const bufferStream = Readable.from(req.file.buffer);
+        
+        bufferStream.pipe(uploadStream)
+            .on('error', (err) => {
+                console.error('GridFS Manual Upload Error:', err);
+                if (!res.headersSent) {
+                    res.status(500).json({ message: 'Upload failed' });
+                }
+            })
+            .on('finish', () => {
+                const fileId = uploadStream.id;
+                const url = `/api/users/image/${fileId}`;
+                res.json({ url });
+            });
     } catch (error) {
-        console.error('Upload Error:', error);
-        res.status(500).json({ message: 'Upload failed' });
+        console.error('Upload Controller Exception:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Upload failed' });
+        }
+    }
+};
+
+// @desc    Serve image from GridFS
+// @route   GET /api/users/image/:id
+// @access  Public
+const serveImage = async (req, res) => {
+    try {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+            bucketName: 'photos',
+        });
+
+        const fileId = new mongoose.Types.ObjectId(req.params.id);
+
+        // Check if file exists
+        const files = await bucket.find({ _id: fileId }).toArray();
+        if (!files || files.length === 0) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        const file = files[0];
+
+        // Set proper content type
+        res.set('Content-Type', file.contentType || 'image/jpeg');
+        res.set('Cache-Control', 'public, max-age=31536000'); // Cache 1 year
+
+        // Stream image from GridFS to response
+        const downloadStream = bucket.openDownloadStream(fileId);
+        downloadStream.on('error', () => {
+            res.status(404).json({ message: 'Image not found' });
+        });
+        downloadStream.pipe(res);
+    } catch (error) {
+        console.error('Image Serve Error:', error);
+        if (error.name === 'BSONError' || error.name === 'CastError') {
+            return res.status(400).json({ message: 'Invalid image ID' });
+        }
+        res.status(500).json({ message: 'Failed to retrieve image' });
     }
 };
 
@@ -636,6 +704,7 @@ module.exports = {
     getProfileById,
     updateProfile,
     uploadImage,
+    serveImage,
     toggleShortlist,
     getShortlistedProfiles,
     getVisitors,

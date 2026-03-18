@@ -38,14 +38,14 @@ const Footer = () => (
                 <div>
                     <h4 className="text-white font-bold mb-4">Contact</h4>
                     <ul className="space-y-2 text-sm">
-                        <li>Email: info@vivah.com</li>
-                        <li>Phone: +91 0000000000</li>
+                        <li>Email: info@shubhvivah.org.in</li>
+                        <li>Phone: +91 7668392730</li>
                         <li>Noida, Delhi, India</li>
                     </ul>
                 </div>
             </div>
             <div className="border-t border-gray-800 mt-12 pt-8 text-center text-sm">
-                <p>&copy; {new Date().getFullYear()} Vivah. All rights reserved.</p>
+                <p>&copy; {new Date().getFullYear()} <a href="https://airoindia.net/"></a>. All rights reserved.</p>
             </div>
         </div>
     </footer>

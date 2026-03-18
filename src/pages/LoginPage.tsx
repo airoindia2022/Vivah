@@ -50,7 +50,7 @@ export const LoginPage = () => {
                             <Heart className="text-white w-7 h-7 fill-current" />
                         </div>
                         <span className="text-3xl font-extrabold font-display bg-gradient-to-r from-brand-600 to-primary-600 bg-clip-text text-transparent">
-                            Vivah
+                            Shubh Vivah
                         </span>
                     </Link>
                 </div>
@@ -128,7 +128,7 @@ export const LoginPage = () => {
                 </div>
 
                 <p className="mt-8 text-center text-sm text-gray-600">
-                    New to Vivah?{' '}
+                    New to Shubh Vivah?{' '}
                     <Link to="/register" className="font-extrabold text-brand-600 hover:text-brand-500">
                         Create an account for free
                     </Link>
