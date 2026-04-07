@@ -19,6 +19,7 @@ interface User {
     whatsappNumber?: string;
     contactEmail?: string;
     isAdmin?: boolean;
+    interestsSent: string[];
 }
 
 interface AuthState {
@@ -31,6 +32,7 @@ interface AuthState {
     logout: () => void;
     updateUser: (userData: Partial<User>) => void;
     toggleShortlistStore: (id: string) => void;
+    toggleInterestStore: (id: string) => void;
     setAuth: (user: User, token: string) => void;
 }
 
@@ -58,7 +60,14 @@ export const useAuthStore = create<AuthState>()(
             register: async (userData) => {
                 try {
                     const data = await authService.register(userData);
-                    // Registration now always requires verification
+                    // Registration success automatically sets session if token returned
+                    if (data.token) {
+                        set({
+                            user: data,
+                            token: data.token,
+                            isAuthenticated: true
+                        });
+                    }
                     return data;
                 } catch (error: any) {
                     throw error;
@@ -89,6 +98,15 @@ export const useAuthStore = create<AuthState>()(
                         shortlisted: state.user.shortlisted?.includes(id)
                             ? state.user.shortlisted.filter(sid => sid !== id)
                             : [...(state.user.shortlisted || []), id]
+                    } : null
+                })),
+            toggleInterestStore: (id) =>
+                set((state) => ({
+                    user: state.user ? {
+                        ...state.user,
+                        interestsSent: state.user.interestsSent?.includes(id)
+                            ? state.user.interestsSent
+                            : [...(state.user.interestsSent || []), id]
                     } : null
                 })),
         }),

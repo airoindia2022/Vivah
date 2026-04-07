@@ -16,8 +16,15 @@ const paymentRoutes = require('./routes/paymentRoutes');
 
 const app = express();
 
+// Trust Proxy for production (important for rate limits)
+app.set('trust proxy', 1);
+
+
 // Security Middlewares
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 
 // Express 5 makes req.query and req.params non-writable by default, which breaks express-mongo-sanitize
 app.use((req, res, next) => {
@@ -78,7 +85,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use(compression());
 
 // Body Parser
-app.use(express.json({ limit: '10kb' })); // Limit body size for security
+app.use(express.json({ limit: '50mb' })); // Increased limit to support large bios and profiles
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -104,10 +111,46 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 connectDB().then(() => {
-    app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
         console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
     });
+
+    // Handle Graceful Shutdown
+    const shutdown = async (signal) => {
+        console.log(`\n[${signal}] Received. Shutting down gracefully...`);
+        server.close(async () => {
+            console.log('HTTP server closed.');
+            const mongoose = require('mongoose');
+            if (mongoose.connection.readyState !== 0) {
+                await mongoose.connection.close();
+                console.log('MongoDB connection closed.');
+            }
+            process.exit(0);
+        });
+        
+        // If it doesn't shut down in 10s, force exit
+        setTimeout(() => {
+            console.error('Could not close connections in time, forcefully shutting down');
+            process.exit(1);
+        }, 10000);
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
 }).catch(err => {
     console.error('Failed to connect to database:', err.message);
+    process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err, promise) => {
+    console.error(`[CRITICAL] Unhandled Rejection at:`, promise, 'reason:', err.message);
+    // Ideally log to an error monitoring service here
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+    console.error(`[CRITICAL] Uncaught Exception:`, err.message);
     process.exit(1);
 });

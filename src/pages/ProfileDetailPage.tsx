@@ -1,80 +1,25 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
     MapPin, Briefcase, GraduationCap, Ruler, Calendar, Heart,
     Phone, Share2, ShieldCheck, CheckCircle2,
     ChevronLeft, ChevronRight, Info, Users, Star, Lock, Mail, MessageCircle
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { profileService, paymentService } from '../services/api';
+import { profileService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UserProfile } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUpgrade } from '../hooks/useUpgrade';
 
 export const ProfileDetailPage = () => {
     const { id } = useParams();
     const [activePhoto, setActivePhoto] = useState(0);
     const queryClient = useQueryClient();
-    const { user: currentUser, isAuthenticated } = useAuthStore();
-    const navigate = useNavigate();
+    const { user: currentUser } = useAuthStore();
+    const { handleUpgrade } = useUpgrade();
 
     const isPremium = currentUser?.isAdmin || (currentUser?.subscriptionTier && ['Silver', 'Gold', 'Diamond'].includes(currentUser.subscriptionTier));
-
-    const handleUpgrade = async () => {
-        if (!isAuthenticated || !currentUser) {
-            navigate('/login');
-            return;
-        }
-
-        try {
-            const res = await paymentService.createCheckoutSession();
-
-            const options = {
-                key: res.key,
-                amount: res.amount,
-                currency: res.currency,
-                name: "Shubh Vivah Matrimony",
-                description: "Premium Membership",
-                order_id: res.id,
-                handler: async function (response: any) {
-                    try {
-                        const verifyRes = await paymentService.verifyPayment({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        });
-
-                        if (verifyRes.success) {
-                            useAuthStore.getState().updateUser({ subscriptionTier: 'Gold' });
-                            alert('Payment Successful! You are now a Premium Member.');
-                            queryClient.invalidateQueries({ queryKey: ['profile', id] });
-                        }
-                    } catch (err) {
-                        console.error('Payment verification failed', err);
-                        alert('Payment verification failed. Please contact support.');
-                    }
-                },
-                prefill: {
-                    name: currentUser.fullName,
-                    email: currentUser.email || ""
-                },
-                theme: {
-                    color: "#db2777"
-                }
-            };
-
-            // @ts-ignore
-            const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response: any) {
-                console.error(response.error);
-                alert('Payment failed');
-            });
-            rzp.open();
-        } catch (error) {
-            console.error('Checkout error:', error);
-            alert('Could not initiate checkout. Please try again later.');
-        }
-    };
 
     const { data: profile, isLoading, error } = useQuery<UserProfile>({
         queryKey: ['profile', id],
@@ -84,10 +29,24 @@ export const ProfileDetailPage = () => {
 
     const shortlistMutation = useMutation({
         mutationFn: () => profileService.toggleShortlist(id!),
-        onSuccess: () => {
+        onSuccess: (data: any) => {
+            useAuthStore.getState().toggleShortlistStore(id!);
+            alert(data.message || 'Shortlist updated!');
             queryClient.invalidateQueries({ queryKey: ['profile', id] });
             queryClient.invalidateQueries({ queryKey: ['shortlisted'] });
         },
+    });
+
+    const interestMutation = useMutation({
+        mutationFn: () => profileService.sendInterest(id!),
+        onSuccess: (data: any) => {
+            alert(data.message || 'Interest sent successfully!');
+            useAuthStore.getState().toggleInterestStore(id!);
+            queryClient.invalidateQueries({ queryKey: ['profile', id] });
+        },
+        onError: (error: any) => {
+            alert(error.response?.data?.message || 'Failed to send interest');
+        }
     });
 
     if (isLoading) {
@@ -113,10 +72,11 @@ export const ProfileDetailPage = () => {
         );
     }
 
-    const nextPhoto = () => setActivePhoto((prev) => (prev + 1) % (profile.photos?.length || 1));
-    const prevPhoto = () => setActivePhoto((prev) => (prev - 1 + (profile.photos?.length || 1)) % (profile.photos?.length || 1));
+    const nextPhoto = () => setActivePhoto((prev: number) => (prev + 1) % (profile.photos?.length || 1));
+    const prevPhoto = () => setActivePhoto((prev: number) => (prev - 1 + (profile.photos?.length || 1)) % (profile.photos?.length || 1));
 
     const isShortlisted = currentUser?.shortlisted?.includes(profile.id || '');
+    const isInterestSent = currentUser?.interestsSent?.includes(profile.id || '');
 
     return (
         <div className="bg-[#F8F9FA] min-h-screen pb-20 font-sans selection:bg-brand-200 selection:text-brand-900">
@@ -206,6 +166,18 @@ export const ProfileDetailPage = () => {
                                 >
                                     <Heart className={`w-5 h-5 mr-2 ${isShortlisted ? 'fill-current text-brand-600' : 'text-white'}`} />
                                     {isShortlisted ? 'Shortlisted' : 'Shortlist Profile'}
+                                </button>
+
+                                <button
+                                    onClick={() => interestMutation.mutate()}
+                                    disabled={interestMutation.isPending || isInterestSent || id === currentUser?._id}
+                                    className={`w-full py-4 rounded-xl flex items-center justify-center font-bold text-[15px] transition-all duration-300 ${isInterestSent
+                                        ? 'bg-blue-50 text-blue-600 border border-blue-200 cursor-default'
+                                        : 'bg-white text-brand-600 border-2 border-brand-500 hover:bg-brand-50 shadow-md transform hover:-translate-y-0.5 active:scale-95'
+                                        } ${(interestMutation.isPending || isInterestSent) ? 'opacity-80' : ''}`}
+                                >
+                                    <Star className={`w-5 h-5 mr-2 ${isInterestSent ? 'fill-current text-blue-600' : 'text-brand-500'}`} />
+                                    {isInterestSent ? 'Interest Sent' : 'Send Interest'}
                                 </button>
                             </div>
                         </div>

@@ -1,13 +1,17 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Heart, User, LogOut } from 'lucide-react';
+import { Menu, X, Heart, User, LogOut, Crown } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUpgrade } from '../hooks/useUpgrade';
 
 export const Navbar = () => {
     const [isOpen, setIsOpen] = React.useState(false);
     const { isAuthenticated, user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const { handleUpgrade } = useUpgrade();
+
+    const isNormalUser = isAuthenticated && user && !user.isAdmin && (user.subscriptionTier === 'Free' || !user.subscriptionTier);
 
     const navLinks = [
         { name: 'Home', path: '/' },
@@ -51,8 +55,17 @@ export const Navbar = () => {
                                             <User className="w-4 h-4 text-brand-600" />
                                         )}
                                     </div>
-                                    <span className="font-medium">{user?.fullName.split(' ')[0]}</span>
+                                    <span className="font-medium">{user?.fullName?.split(' ')[0]}</span>
                                 </Link>
+                                {isNormalUser && (
+                                    <button
+                                        onClick={handleUpgrade}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-full text-sm font-bold shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:-translate-y-0.5 transition-all"
+                                    >
+                                        <Crown className="w-4 h-4 fill-current" />
+                                        <span>Upgrade</span>
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => {
                                         logout();
@@ -146,6 +159,18 @@ export const Navbar = () => {
                                             <p className="text-sm text-gray-500">View {user?.isAdmin ? 'Admin' : ''} Dashboard</p>
                                         </div>
                                     </Link>
+                                    {isNormalUser && (
+                                        <button
+                                            onClick={() => {
+                                                setIsOpen(false);
+                                                handleUpgrade();
+                                            }}
+                                            className="w-full flex items-center justify-center space-x-2 p-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl font-bold shadow-lg mb-4"
+                                        >
+                                            <Crown className="w-5 h-5 fill-current" />
+                                            <span>Upgrade to Premium</span>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => {
                                             logout();

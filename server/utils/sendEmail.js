@@ -14,15 +14,25 @@ const sendEmail = async (options) => {
         };
     } else {
         // Custom SMTP mode (host/port)
+        const host = (process.env.EMAIL_HOST || 'sr3.wonderwebhub.com').trim();
+        const port = parseInt(process.env.EMAIL_PORT, 10) || 465;
+        const secure = String(process.env.EMAIL_SECURE).toLowerCase() === 'true';
+
+        console.log(`[DEBUG] Mail Transport: ${host}:${port} (Secure: ${secure})`);
+
         transportConfig = {
-            host: process.env.EMAIL_HOST,
-            port: parseInt(process.env.EMAIL_PORT),
-            secure: process.env.EMAIL_SECURE === 'true',
+            host,
+            port,
+            secure,
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
+                user: (process.env.EMAIL_USER || '').trim(),
+                pass: (process.env.EMAIL_PASS || ''),
             },
-            tls: { rejectUnauthorized: false },
+            tls: {
+                rejectUnauthorized: false,
+                servername: host,
+                checkServerIdentity: () => undefined,
+            },
         };
     }
 

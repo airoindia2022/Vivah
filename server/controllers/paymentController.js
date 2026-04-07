@@ -4,8 +4,8 @@ const User = require('../models/userModel');
 const Transaction = require('../models/transactionModel');
 
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyIdHere',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'YourKeySecretHere'
+    key_id: (process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyIdHere').trim(),
+    key_secret: (process.env.RAZORPAY_KEY_SECRET || 'YourKeySecretHere').trim()
 });
 
 const createCheckoutSession = async (req, res) => {
@@ -27,8 +27,17 @@ const createCheckoutSession = async (req, res) => {
             key: process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyIdHere'
         });
     } catch (error) {
-        console.error('Razorpay Error:', error);
-        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+        console.error('Razorpay Error Details:', {
+            message: error.message,
+            statusCode: error.statusCode,
+            description: error.description,
+            metadata: error.metadata
+        });
+        res.status(500).json({ 
+            message: 'Razorpay order creation failed', 
+            error: error.message,
+            details: error.description || 'Check server logs for more details'
+        });
     }
 };
 

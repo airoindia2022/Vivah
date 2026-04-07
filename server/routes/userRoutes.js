@@ -18,6 +18,9 @@ const {
     verifyEmail,
     sendOTP,
     verifyOTP,
+    sendInterest,
+    handleInterest,
+    getInterests,
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const { upload } = require('../config/gridfs');
@@ -39,6 +42,9 @@ router.get('/shortlisted', protect, getShortlistedProfiles);
 router.get('/visitors', protect, getVisitors);
 router.get('/notifications', protect, getNotifications);
 router.put('/notifications/:id', protect, markNotificationRead);
+router.post('/interest/:id', protect, sendInterest);
+router.put('/interest/:id', protect, handleInterest);
+router.get('/interests', protect, getInterests);
 router.post('/upload', upload.single('image'), uploadImage);
 router.get('/image/:id', serveImage);
 

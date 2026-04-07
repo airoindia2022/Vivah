@@ -6,6 +6,7 @@ const sendEmail = require('../utils/sendEmail');
 const asyncHandler = require('../utils/asyncHandler');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
+const { getOTPTemplate, getPasswordResetTemplate } = require('../utils/emailTemplates');
 
 
 // @desc    Send OTP to email
@@ -13,62 +14,55 @@ const { Readable } = require('stream');
 // @access  Public
 const sendOTP = asyncHandler(async (req, res) => {
     const { email } = req.body;
+    console.log(`[DEBUG] Attempting to send OTP to: ${email}`);
 
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
-        }
+    if (!email) {
+        return res.status(400).json({ message: 'Email is required' });
+    }
 
-        // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+        return res.status(400).json({ message: 'User already exists' });
+    }
 
-        // Save OTP to DB
-        await OTP.findOneAndUpdate(
-            { email },
-            { code: otp, createdAt: Date.now() },
-            { upsert: true, returnDocument: 'after' }
-        );
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Send OTP Email
-        const message = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #e11d48; text-align: center;">Vivah Email Verification</h2>
-                <p>Hello,</p>
-                <p>Please use the following OTP to verify your email address to begin your Vivah journey:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <h1 style="background-color: #fce7f3; color: #e11d48; padding: 15px; display: inline-block; border-radius: 5px; letter-spacing: 5px;">${otp}</h1>
-                </div>
-                <p>This code will expire in 10 minutes.</p>
-                <p>If you did not request this, please ignore this email.</p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #888; text-align: center;">© ${new Date().getFullYear()} Vivah. All rights reserved.</p>
-            </div>
-        `;
+    // Save OTP to DB
+    await OTP.findOneAndUpdate(
+        { email },
+        { code: otp, createdAt: Date.now() },
+        { upsert: true, new: true }
+    );
 
-        try {
-            await sendEmail({
-                email,
-                subject: 'Verify your email - Vivah',
-                html: message,
+    // Send OTP Email
+    const message = getOTPTemplate(otp);
+
+    try {
+        await sendEmail({
+            email,
+            subject: 'Verify your email - Vivah',
+            html: message,
+        });
+        res.status(200).json({ message: 'OTP sent successfully' });
+    } catch (emailError) {
+        console.error('[ERROR] Email Send Failure:', emailError.message || emailError);
+        
+        // Robust development check: default to dev if NODE_ENV is not 'production'
+        const isDev = !process.env.NODE_ENV || process.env.NODE_ENV.trim() !== 'production';
+        if (isDev) {
+            console.log('------------------------------------');
+            console.log('DEV BYPASS: EMAIL FAILED BUT ALLOWED');
+            console.log(`OTP for ${email}: ${otp}`);
+            console.log('------------------------------------');
+            return res.status(200).json({ 
+                message: 'OTP sent (Dev Mode: Check Server Logs)',
+                devMode: true 
             });
-            res.status(200).json({ message: 'OTP sent successfully' });
-        } catch (emailError) {
-            console.error('Email Send Error:', emailError.message);
-            
-            // In development, we allow registration even if email fails by logging OTP to console
-            if (process.env.NODE_ENV === 'development') {
-                console.log('------------------------------------');
-                console.log('DEVELOPMENT MODE: EMAIL FAILED');
-                console.log(`OTP for ${email}: ${otp}`);
-                console.log('------------------------------------');
-                return res.status(200).json({ 
-                    message: 'OTP sent (Dev Mode: Check Server Logs)',
-                    devMode: true 
-                });
-            }
-            
-            res.status(500).json({ message: 'Error sending verification email' });
         }
+        
+        res.status(500).json({ message: `Mail Error: ${emailError.message || 'Check logs'}` });
+    }
 });
 
 
@@ -123,6 +117,8 @@ const authUser = asyncHandler(async (req, res) => {
                 photos: user.photos,
                 subscriptionTier: user.subscriptionTier,
                 isAdmin: user.isAdmin,
+                shortlisted: user.shortlisted || [],
+                interestsSent: user.interestsSent || [],
                 token: generateToken(user._id),
             });
         } else {
@@ -181,12 +177,13 @@ const registerUser = async (req, res) => {
             contactEmail,
             isVerified: true, // We assume verification was done in Step 1
         });
-
         if (user) {
             res.status(201).json({
                 _id: user._id,
                 fullName: user.fullName,
                 email: user.email,
+                shortlisted: user.shortlisted || [],
+                interestsSent: user.interestsSent || [],
                 token: generateToken(user._id),
             });
         } else {
@@ -400,6 +397,12 @@ const uploadImage = async (req, res) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
+        // Wait for connection if not ready (handle common intermittent startup issue)
+        if (!mongoose.connection.db) {
+            console.error('[ERROR] GridFS Manual Upload Error: Database connection not yet open');
+            return res.status(500).json({ message: 'Database connection must be open' });
+        }
+
         const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
             bucketName: 'photos',
         });
@@ -440,6 +443,12 @@ const uploadImage = async (req, res) => {
 // @access  Public
 const serveImage = async (req, res) => {
     try {
+        // Wait for connection if not ready
+        if (!mongoose.connection.db) {
+            console.error('[ERROR] GridFS Serve Error: Database connection not yet open');
+            return res.status(500).json({ message: 'Database connection must be open' });
+        }
+
         const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
             bucketName: 'photos',
         });
@@ -481,7 +490,9 @@ const toggleShortlist = async (req, res) => {
         const user = await User.findById(req.user._id);
         const profilId = req.params.id;
 
-        if (user.shortlisted.includes(profilId)) {
+        const isShortlisted = user.shortlisted.some(id => id.toString() === profilId);
+
+        if (isShortlisted) {
             user.shortlisted = user.shortlisted.filter(id => id.toString() !== profilId);
             await user.save();
             res.json({ message: 'Removed from shortlist', isShortlisted: false });
@@ -618,20 +629,7 @@ const forgotPassword = async (req, res) => {
         // Create reset URL
         const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        const message = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #e11d48; text-align: center;">Vivah Password Reset</h2>
-                <p>Hello ${user.fullName},</p>
-                <p>You are receiving this email because you (or someone else) has requested the reset of a password. Please click the button below to reset your password:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="${resetUrl}" style="background-color: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
-                </div>
-                <p>Wait! If you did not request this, please ignore this email and your password will remain unchanged.</p>
-                <p>The link will expire in 10 minutes.</p>
-                <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #888; text-align: center;">© ${new Date().getFullYear()} Vivah. All rights reserved.</p>
-            </div>
-        `;
+        const message = getPasswordResetTemplate(user, resetUrl);
 
         try {
             await sendEmail({
@@ -642,13 +640,25 @@ const forgotPassword = async (req, res) => {
 
             res.status(200).json({ message: 'Email sent successfully' });
         } catch (error) {
-            console.error('Email Error:', error);
+            console.error('[ERROR] Password Reset Email Failure:', error.message || error);
+            
+            const isDev = !process.env.NODE_ENV || process.env.NODE_ENV.trim() !== 'production';
+            if (isDev) {
+                console.log('------------------------------------');
+                console.log('DEV BYPASS: RESET EMAIL FAILED');
+                console.log(`Reset URL for ${user.email}: ${resetUrl}`);
+                console.log('------------------------------------');
+                return res.status(200).json({ 
+                    message: 'Reset link logged to console (Dev Mode)',
+                    resetUrl: resetUrl 
+                });
+            }
+
             user.resetPasswordToken = undefined;
             user.resetPasswordExpire = undefined;
-
             await user.save();
 
-            res.status(500).json({ message: 'Email could not be sent' });
+            res.status(500).json({ message: `Email Error: ${error.message || 'Check logs'}` });
         }
     } catch (error) {
         console.error('Forgot Password Error:', error);
@@ -692,6 +702,107 @@ const resetPassword = async (req, res) => {
     }
 };
 
+// @desc    Send interest to another user
+// @route   POST /api/users/interest/:id
+// @access  Private
+const sendInterest = asyncHandler(async (req, res) => {
+    const targetUserId = req.params.id;
+    const senderId = req.user._id;
+
+    if (targetUserId === senderId.toString()) {
+        return res.status(400).json({ message: "You cannot send interest to yourself" });
+    }
+
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    const sender = await User.findById(senderId);
+
+    // Check if interest already sent
+    if (sender.interestsSent.includes(targetUserId)) {
+        return res.status(400).json({ message: 'Interest already sent to this user' });
+    }
+
+    // Add to sender's sent interests
+    sender.interestsSent.push(targetUserId);
+    await sender.save();
+
+    // Add to target's received interests
+    targetUser.interestsReceived.push({ user: senderId, status: 'Pending' });
+    
+    // Create notification for target user
+    targetUser.notifications.push({
+        type: 'Interest',
+        from: senderId,
+        content: `${sender.fullName} has expressed interest in your profile`,
+        createdAt: new Date()
+    });
+
+    await targetUser.save();
+
+    res.status(200).json({ message: 'Interest sent successfully' });
+});
+
+// @desc    Handle (Accept/Decline) received interest
+// @route   PUT /api/users/interest/:id
+// @access  Private
+const handleInterest = asyncHandler(async (req, res) => {
+    const { status } = req.body; // 'Accepted' or 'Declined'
+    const interestSenderId = req.params.id;
+    const userId = req.user._id;
+
+    if (!['Accepted', 'Declined'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const user = await User.findById(userId);
+    const interest = user.interestsReceived.find(
+        (i) => i.user.toString() === interestSenderId && i.status === 'Pending'
+    );
+
+    if (!interest) {
+        return res.status(404).json({ message: 'Interest request not found or already handled' });
+    }
+
+    interest.status = status;
+    await user.save();
+
+    if (status === 'Accepted') {
+        const sender = await User.findById(interestSenderId);
+        if (sender) {
+            sender.notifications.push({
+                type: 'Acceptance',
+                from: userId,
+                content: `${user.fullName} has accepted your interest!`,
+                createdAt: new Date()
+            });
+            await sender.save();
+        }
+    }
+
+    res.json({ message: `Interest ${status} successfully`, status });
+});
+
+// @desc    Get sent and received interests
+// @route   GET /api/users/interests
+// @access  Private
+const getInterests = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id)
+        .populate('interestsSent', 'fullName photos age location religion profession')
+        .populate('interestsReceived.user', 'fullName photos age location religion profession');
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+        sent: user.interestsSent,
+        received: user.interestsReceived
+    });
+});
+
 module.exports = {
     verifyEmail,
     sendOTP,
@@ -710,4 +821,7 @@ module.exports = {
     getVisitors,
     getNotifications,
     markNotificationRead,
+    sendInterest,
+    handleInterest,
+    getInterests,
 };

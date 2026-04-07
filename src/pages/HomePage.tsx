@@ -26,7 +26,7 @@ export const HomePage = () => {
         navigate(`/search?${params.toString()}`);
     };
 
-    const { data: profiles, isLoading } = useQuery<UserProfile[]>({
+    const { data: profiles, isLoading, isError } = useQuery<UserProfile[]>({
         queryKey: ['featured-profiles'],
         queryFn: () => profileService.getProfiles(),
     });
@@ -51,14 +51,19 @@ export const HomePage = () => {
 
     const testimonials = [
         {
-            name: "Aman & Shonali",
-            photo: "https://res.cloudinary.com/ddd0pijhx/image/upload/v1772124848/vivah_matrimony/ljfqvyctqhsgxxym4ykg.jpg?q=80&w=400&auto=format&fit=crop",
+            name: "Shakeel Khan ",
+            photo: "https://back.shubhvivah.org.in/api/users/image/69bd615518bce9140da5c7b5",
             text: "We found our perfect match within 3 months. The filters helped us find exactly what we were looking for."
         },
         {
-            name: "Ravi & Priya",
-            photo: "https://res.cloudinary.com/ddd0pijhx/image/upload/v1772124848/vivah_matrimony/ljfqvyctqhsgxxym4ykg.jpg?q=80&w=400&auto=format&fit=crop",
-            text: "We found our perfect match within 3 months. The filters helped us find exactly what we were looking for."
+            name: "Miraj Malik",
+            photo: "https://back.shubhvivah.org.in/api/users/image/69bd615518bce9140da5c7b3",
+            text: "Finding a partner was never this easy. The platform is truly amazing and user-friendly."
+        },
+        {
+            name: "Shahid Saifi",
+            photo: "https://back.shubhvivah.org.in/api/users/image/69bd615518bce9140da5c7b1",
+            text: "My journey on Shubh Vivah was incredible. Found my soulmate within weeks!"
         }
     ];
 
@@ -185,8 +190,12 @@ export const HomePage = () => {
                                 <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto mb-4" />
                                 <p className="text-gray-500 font-bold">Discovering premium profiles...</p>
                             </div>
+                        ) : isError ? (
+                            <div className="col-span-full py-20 text-center">
+                                <p className="text-rose-500 font-bold">Unable to load profiles at this moment. Please try again later.</p>
+                            </div>
                         ) : (
-                            profiles?.slice(0, 6).map((profile) => (
+                            Array.isArray(profiles) && profiles.slice(0, 6).map((profile) => (
                                 <ProfileCard key={profile.id} profile={profile} />
                             ))
                         )}

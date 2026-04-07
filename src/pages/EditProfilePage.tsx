@@ -314,29 +314,29 @@ export const EditProfilePage = () => {
                         <section className="space-y-4">
                             <h2 className="text-xl font-bold flex items-center">
                                 <User className="w-5 h-5 mr-2 text-brand-600" /> About Me
-                                <span className={`ml-auto text-sm font-normal ${(watch('bio')?.trim().split(/\s+/).filter(Boolean).length || 0) > 300
+                                <span className={`ml-auto text-sm font-normal ${((watch('bio') || '').trim().split(/\s+/).filter(Boolean).length || 0) > 300
                                         ? 'text-red-500 font-bold'
                                         : 'text-gray-400'
                                     }`}>
-                                    {watch('bio')?.trim().split(/\s+/).filter(Boolean).length || 0}/300 words
+                                    {(watch('bio') || '').trim().split(/\s+/).filter(Boolean).length || 0}/300 words
                                 </span>
                             </h2>
                             <textarea
                                 {...register('bio', {
                                     validate: (value) => {
                                         if (!value) return true;
-                                        const wordCount = value.trim().split(/\s+/).filter(Boolean).length;
+                                        const wordCount = (value || '').trim().split(/\s+/).filter(Boolean).length;
                                         return wordCount <= 300 || 'Bio must be 300 words or less';
                                     }
                                 })}
                                 rows={4}
-                                className={`w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 transition-all resize-none ${(watch('bio')?.trim().split(/\s+/).filter(Boolean).length || 0) > 300
+                                className={`w-full p-4 bg-gray-50 border rounded-2xl outline-none focus:ring-2 transition-all resize-none ${((watch('bio') || '').trim().split(/\s+/).filter(Boolean).length || 0) > 300
                                         ? 'border-red-400 focus:ring-red-500'
                                         : 'border-gray-200 focus:ring-brand-500'
                                     }`}
                                 placeholder="Tell potential matches about yourself..."
                             />
-                            {(watch('bio')?.trim().split(/\s+/).filter(Boolean).length || 0) > 300 && (
+                            {((watch('bio') || '').trim().split(/\s+/).filter(Boolean).length || 0) > 300 && (
                                 <p className="text-red-500 text-xs font-bold">Please reduce your bio to 300 words or less.</p>
                             )}
                         </section>

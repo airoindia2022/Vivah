@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// const API_URL = 'https://back.shubhvivah.org.in/api';
-const API_URL = '/api';
+const API_URL = 'https://back.shubhvivah.org.in/api';
 
 
 const api = axios.create({
@@ -92,6 +91,18 @@ export const profileService = {
         });
         return response.data;
     },
+    sendInterest: async (id: string) => {
+        const response = await api.post(`/users/interest/${id}`);
+        return response.data;
+    },
+    handleInterest: async (id: string, status: 'Accepted' | 'Declined') => {
+        const response = await api.put(`/users/interest/${id}`, { status });
+        return response.data;
+    },
+    getInterests: async () => {
+        const response = await api.get('/users/interests');
+        return response.data;
+    },
 };
 
 export const paymentService = {
@@ -109,6 +120,17 @@ export const paymentService = {
 api.interceptors.response.use(
     (response) => {
         if (response.data && typeof response.data === 'object') {
+            const getBaseUrl = (url: string) => {
+                if (!url) return '';
+                if (url.startsWith('https://') || url.startsWith('http://')) {
+                    const match = url.match(/^(https?:\/\/[^\/]+)/);
+                    return match ? match[1] : '';
+                }
+                return '';
+            };
+
+            const backOrigin = getBaseUrl(API_URL);
+
             const normalize = (obj: any): any => {
                 if (Array.isArray(obj)) return obj.map(normalize);
                 if (obj && typeof obj === 'object') {
@@ -116,8 +138,12 @@ api.interceptors.response.use(
                         obj.id = obj._id;
                     }
                     Object.keys(obj).forEach(key => {
-                        if (obj[key] && typeof obj[key] === 'object') {
-                            normalize(obj[key]);
+                        const val = obj[key];
+                        // If it's a string starting with /api/ and we have a backend origin, prefix it
+                        if (typeof val === 'string' && val.startsWith('/api/') && backOrigin) {
+                            obj[key] = `${backOrigin}${val}`;
+                        } else if (val && typeof val === 'object') {
+                            obj[key] = normalize(val);
                         }
                     });
                 }

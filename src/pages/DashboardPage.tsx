@@ -121,7 +121,7 @@ export const DashboardPage = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 className="text-4xl lg:text-5xl font-black font-display text-slate-900"
                             >
-                                Hi, {user.fullName.split(' ')[0]}!
+                                Hi, {user.fullName?.split(' ')[0] || 'User'}!
                             </motion.h1>
                             <p className="text-slate-500 font-bold flex items-center gap-2">
                                 {completeness === 100 ? (
@@ -214,14 +214,14 @@ export const DashboardPage = () => {
                                                 <p className="text-rose-600 font-medium text-sm mt-1 mb-6">We're having trouble loading recommendations at the moment.</p>
                                                 <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-all">Try Again</button>
                                             </div>
-                                        ) : recommendations?.length === 0 ? (
+                                        ) : Array.isArray(recommendations) && recommendations.length === 0 ? (
                                             <div className="col-span-full py-24 bg-white rounded-[3rem] border-2 border-slate-100 border-dashed text-center p-12">
                                                 <p className="text-slate-400 font-black text-lg">No matches found yet.</p>
                                                 <p className="text-slate-400 font-medium text-sm mt-2 italic">Try updating your preferences or bio for better visibility.</p>
                                                 <Link to="/profile/edit" className="mt-8 inline-block px-10 py-4 bg-brand-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-brand-700 shadow-xl shadow-brand-500/20 transform hover:-translate-y-1 transition-all">Update Preferences</Link>
                                             </div>
                                         ) : (
-                                            recommendations?.slice(0, 4).map((profile: any) => (
+                                            Array.isArray(recommendations) && recommendations.slice(0, 4).map((profile: any) => (
                                                 <ProfileCard key={profile.id} profile={profile} />
                                             ))
                                         )
@@ -264,7 +264,7 @@ export const DashboardPage = () => {
                                     </div>
                                 ) : (
                                     <div className="divide-y divide-slate-50">
-                                        {visitors?.slice(0, 5).map((visitor: any) => (
+                                        {Array.isArray(visitors) && visitors.slice(0, 5).map((visitor: any) => (
                                             <Link
                                                 to={`/profile/${visitor.user._id}`}
                                                 key={visitor._id}

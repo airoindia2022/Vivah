@@ -284,7 +284,7 @@ export const AdminPage = () => {
 
     const subscriptionData = useMemo(() => {
         if (!stats) return [];
-        return stats.subscriptionBreakdown.map(s => ({
+        return (stats.subscriptionBreakdown || []).map(s => ({
             name: s._id,
             value: s.count,
             color: tierColors[s._id] || '#64748b'
@@ -293,12 +293,12 @@ export const AdminPage = () => {
 
     const trendData = useMemo(() => {
         if (!stats) return [];
-        return stats.last7Days;
+        return stats.last7Days || [];
     }, [stats]);
 
     const religionData = useMemo(() => {
         if (!stats) return [];
-        return stats.religionBreakdown.map((r, i) => ({
+        return (stats.religionBreakdown || []).map((r, i) => ({
             name: r._id,
             value: r.count,
             color: CHART_COLORS[i % CHART_COLORS.length]
@@ -317,7 +317,7 @@ export const AdminPage = () => {
             '60': '60+',
             'Other': 'Other'
         };
-        return stats.ageDistribution.map(a => ({
+        return (stats.ageDistribution || []).map(a => ({
             name: labels[a._id.toString()] || a._id.toString(),
             value: a.count
         }));

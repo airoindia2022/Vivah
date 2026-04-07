@@ -96,7 +96,7 @@ const STEPS = [
 const uid = () => Math.random().toString(36).slice(2);
 
 const formatMessage = (text: string) =>
-    text.split('**').map((part, i) =>
+    (text || '').split('**').map((part, i) =>
         i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
     );
 
@@ -189,13 +189,14 @@ export const ChatbotWidget = () => {
                 if (profiles.length === 0) {
                     setTimeout(() => pushBot("No exact matches found — showing you profiles you might love!"), 700);
                     const fallbackData = await profileService.getProfiles({ limit: 6 });
-                    const fallback: MatchedProfile[] = (Array.isArray(fallbackData) ? fallbackData : fallbackData.profiles ?? []).slice(0, 6);
+                    const rawFallback = Array.isArray(fallbackData) ? fallbackData : (fallbackData?.profiles ?? []);
+                    const fallback: MatchedProfile[] = Array.isArray(rawFallback) ? rawFallback.slice(0, 6) : [];
                     setTimeout(() => {
                         pushBot(`Here are **${fallback.length} handpicked profiles** for you:`, undefined, fallback);
                         setTimeout(() => pushBot('Want to refine your search?', ['🔄 Start Over', '🔍 Browse Search']), 700);
                     }, 800);
                 } else {
-                    const shown = profiles.slice(0, 6);
+                    const shown = Array.isArray(profiles) ? profiles.slice(0, 6) : [];
                     setTimeout(() => {
                         pushBot(`Found **${profiles.length} compatible matches**! Here are the top picks:`, undefined, shown);
                         setTimeout(() => pushBot('Would you like to do anything else?', ['🔄 Start Over', '🔍 Browse Search']), 700);

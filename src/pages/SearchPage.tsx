@@ -159,10 +159,10 @@ export const SearchPage = () => {
                                 Failed to load profiles. Please try again later.
                             </div>
                         )}
-                        {profiles?.map((profile: UserProfile, i: number) => (
+                        {Array.isArray(profiles) && profiles.map((profile: UserProfile, i: number) => (
                             <ProfileCard key={`${profile.id}-${i}`} profile={profile} />
                         ))}
-                        {profiles?.length === 0 && !isLoading && (
+                        {Array.isArray(profiles) && profiles.length === 0 && !isLoading && (
                             <div className="col-span-full py-20 text-center text-gray-500">
                                 No profiles found matching your criteria.
                             </div>
