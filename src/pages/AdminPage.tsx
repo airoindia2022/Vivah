@@ -42,7 +42,10 @@ import {
     Cpu,
     HardDrive,
     Menu,
-    X
+    X,
+    Settings as SettingsIcon,
+    ToggleLeft,
+    ToggleRight
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -131,7 +134,7 @@ export const AdminPage = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     const [bulkConfirm, setBulkConfirm] = useState(false);
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'transactions'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'transactions' | 'settings'>('dashboard');
 
     const [health, setHealth] = useState<HealthData | null>(null);
     const [healthLoading, setHealthLoading] = useState(false);
@@ -141,6 +144,10 @@ export const AdminPage = () => {
     const [transPage, setTransPage] = useState(1);
     const [transTotalPages, setTransTotalPages] = useState(1);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+
+    const [settings, setSettings] = useState<any[]>([]);
+    const [settingsLoading, setSettingsLoading] = useState(false);
 
     const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
         setToast({ msg, type });
@@ -201,7 +208,30 @@ export const AdminPage = () => {
         }
     }, [transPage]);
 
+    const fetchSettings = useCallback(async () => {
+        setSettingsLoading(true);
+        try {
+            const { data } = await api.get(`${API}/settings`);
+            setSettings(data);
+        } catch {
+            showToast('Failed to load settings', 'error');
+        } finally {
+            setSettingsLoading(false);
+        }
+    }, []);
+
+    const updateSetting = async (key: string, value: any) => {
+        try {
+            await api.put(`${API}/settings/${key}`, { value });
+            showToast('Setting updated successfully');
+            fetchSettings();
+        } catch {
+            showToast('Failed to update setting', 'error');
+        }
+    };
+
     useEffect(() => {
+        setIsMounted(true);
         if (!user || !(user as any).isAdmin) {
             navigate('/');
             return;
@@ -217,7 +247,8 @@ export const AdminPage = () => {
     useEffect(() => {
         if (activeTab === 'users') fetchUsers();
         if (activeTab === 'transactions') fetchTransactions();
-    }, [activeTab, fetchUsers, fetchTransactions]);
+        if (activeTab === 'settings') fetchSettings();
+    }, [activeTab, fetchUsers, fetchTransactions, fetchSettings]);
 
     const toggleSelect = (id: string) => {
         setSelected(prev => {
@@ -409,6 +440,15 @@ export const AdminPage = () => {
                         {activeTab === 'transactions' && <motion.div layoutId="nav-active" className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500" />}
                     </button>
 
+                    <button
+                        onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group ${activeTab === 'settings' ? 'bg-white/5 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                    >
+                        <SettingsIcon size={20} className={activeTab === 'settings' ? 'text-brand-500' : 'group-hover:text-brand-500'} />
+                        <span className="font-semibold text-sm">Configuration</span>
+                        {activeTab === 'settings' && <motion.div layoutId="nav-active" className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500" />}
+                    </button>
+
                     <div className="pt-8 pb-4 px-4">
                         <p className="text-[10px] font-bold text-slate-500 tracking-widest uppercase">External</p>
                     </div>
@@ -463,7 +503,7 @@ export const AdminPage = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                            {activeTab === 'dashboard' ? 'Analytics Hub' : activeTab === 'users' ? 'User Management' : 'Transaction History'}
+                            {activeTab === 'dashboard' ? 'Analytics Hub' : activeTab === 'users' ? 'User Management' : activeTab === 'transactions' ? 'Transaction History' : 'System Settings'}
                         </h2>
                         <p className="text-slate-400 mt-1 font-medium text-sm">Welcome back, {user?.fullName?.split(' ')[0] || 'Admin'}</p>
                     </div>
@@ -474,8 +514,10 @@ export const AdminPage = () => {
                                     fetchStats();
                                 } else if (activeTab === 'users') {
                                     fetchUsers();
-                                } else {
+                                } else if (activeTab === 'transactions') {
                                     fetchTransactions();
+                                } else {
+                                    fetchSettings();
                                 }
                             }}
                             className="p-3 rounded-xl bg-[#1c1c28] border border-white/5 text-slate-400 hover:text-white hover:border-white/10 transition-all"
@@ -537,8 +579,8 @@ export const AdminPage = () => {
                                         </div>
                                     </div>
                                     <div className="h-[320px] w-full relative min-h-0 min-w-0">
-                                        {stats && (
-                                            <ResponsiveContainer width="100%" height="100%" id="chart-growth" debounce={1} minWidth={0} minHeight={0}>
+                                        {stats && isMounted && (
+                                            <ResponsiveContainer width="100%" height="100%" id="chart-growth" debounce={50} minWidth={0} minHeight={0}>
                                                 <AreaChart data={trendData}>
                                                     <defs>
                                                         <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
@@ -587,8 +629,8 @@ export const AdminPage = () => {
                                     <h3 className="text-lg font-bold text-white mb-2">Member Distribution</h3>
                                     <p className="text-xs text-slate-500 mb-8 font-medium">Gender-based profile metrics</p>
                                     <div className="h-[280px] w-full relative min-h-0 min-w-0">
-                                        {stats && (
-                                            <ResponsiveContainer width="100%" height="100%" id="chart-gender" debounce={1} minWidth={0} minHeight={0}>
+                                        {stats && isMounted && (
+                                            <ResponsiveContainer width="100%" height="100%" id="chart-gender" debounce={50} minWidth={0} minHeight={0}>
                                                 <PieChart>
                                                     <Pie
                                                         data={genderData}
@@ -635,8 +677,8 @@ export const AdminPage = () => {
                                         Religion Demographics
                                     </h3>
                                     <div className="h-[300px] w-full relative min-h-0 min-w-0">
-                                        {stats && (
-                                            <ResponsiveContainer width="100%" height="100%" id="chart-religion" debounce={1} minWidth={0} minHeight={0}>
+                                        {stats && isMounted && (
+                                            <ResponsiveContainer width="100%" height="100%" id="chart-religion" debounce={50} minWidth={0} minHeight={0}>
                                                 <PieChart>
                                                     <Pie
                                                         data={religionData}
@@ -671,8 +713,8 @@ export const AdminPage = () => {
                                         Age Group Distribution
                                     </h3>
                                     <div className="h-[250px] w-full relative min-h-0 min-w-0">
-                                        {stats && (
-                                            <ResponsiveContainer width="100%" height="100%" id="chart-age" debounce={1} minWidth={0} minHeight={0}>
+                                        {stats && isMounted && (
+                                            <ResponsiveContainer width="100%" height="100%" id="chart-age" debounce={50} minWidth={0} minHeight={0}>
                                                 <BarChart data={ageData}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                                                     <XAxis
@@ -707,8 +749,8 @@ export const AdminPage = () => {
                                         Subscribers by Tier
                                     </h3>
                                     <div className="h-[250px] w-full relative min-h-0 min-w-0">
-                                        {stats && (
-                                            <ResponsiveContainer width="100%" height="100%" id="chart-sub" debounce={1} minWidth={0} minHeight={0}>
+                                        {stats && isMounted && (
+                                            <ResponsiveContainer width="100%" height="100%" id="chart-sub" debounce={50} minWidth={0} minHeight={0}>
                                                 <BarChart data={subscriptionData} layout="vertical">
                                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
                                                     <XAxis type="number" hide />
@@ -1118,6 +1160,64 @@ export const AdminPage = () => {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'settings' && (
+                        <motion.div
+                            key="settings"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="max-w-4xl"
+                        >
+                            <div className="grid gap-6">
+                                {settingsLoading ? (
+                                    Array(2).fill(0).map((_, i) => (
+                                        <div key={i} className="bg-[#1c1c28] p-8 rounded-2xl border border-white/5 animate-pulse h-32" />
+                                    ))
+                                ) : settings.map(setting => (
+                                    <div key={setting.key} className="bg-[#1c1c28] p-8 rounded-2xl border border-white/5 shadow-xl flex items-center justify-between group hover:border-white/10 transition-all">
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-14 h-14 rounded-2xl bg-brand-500/10 flex items-center justify-center text-brand-500 shadow-inner group-hover:scale-110 transition-transform">
+                                                {setting.key === 'DISABLE_EMAIL_OTP' ? <ShieldCheck size={28} /> : <SettingsIcon size={28} />}
+                                            </div>
+                                            <div>
+                                                <h3 className="text-lg font-black text-white tracking-tight uppercase">{setting.key.replace(/_/g, ' ')}</h3>
+                                                <p className="text-sm text-slate-500 font-medium">{setting.description || 'System configuration toggle'}</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => updateSetting(setting.key, !setting.value)}
+                                            className={`
+                                                relative inline-flex h-9 w-16 items-center rounded-full transition-all duration-300 focus:outline-none
+                                                ${setting.value ? 'bg-brand-500 shadow-lg shadow-brand-500/30' : 'bg-slate-700'}
+                                            `}
+                                        >
+                                            <span 
+                                                className={`
+                                                    inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-300
+                                                    ${setting.value ? 'translate-x-8' : 'translate-x-1.5'}
+                                                `} 
+                                            />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <div className="mt-8 p-8 rounded-2xl bg-brand-500/5 border border-brand-500/10">
+                                    <div className="flex gap-4">
+                                        <div className="p-3 bg-brand-500/20 rounded-xl text-brand-500 h-fit">
+                                            <AlertTriangle size={24} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-white font-black uppercase text-sm mb-1 tracking-tight">Technical Note</h4>
+                                            <p className="text-slate-400 text-sm font-medium leading-relaxed">
+                                                Toggling these features affects all users in real-time. The "Registration Bypass" (OTP OFF) is intended for temporary maintenance, testing, or mass registration events. Ensure you turn it back ON once the requirement is met.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     )}

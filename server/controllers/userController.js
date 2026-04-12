@@ -7,6 +7,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const mongoose = require('mongoose');
 const { Readable } = require('stream');
 const { getOTPTemplate, getPasswordResetTemplate } = require('../utils/emailTemplates');
+const { getSetting } = require('./adminController');
 
 
 // @desc    Send OTP to email
@@ -18,6 +19,15 @@ const sendOTP = asyncHandler(async (req, res) => {
 
     if (!email) {
         return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Temporary bypass for OTP
+    const isOTPDisabled = await getSetting('DISABLE_EMAIL_OTP', process.env.DISABLE_EMAIL_OTP === 'true');
+    if (isOTPDisabled) {
+        return res.status(200).json({ 
+            message: 'OTP verification is currently disabled', 
+            otpDisabled: true 
+        });
     }
 
     const userExists = await User.findOne({ email });
@@ -72,6 +82,12 @@ const sendOTP = asyncHandler(async (req, res) => {
 const verifyOTP = async (req, res) => {
     try {
         const { email, code } = req.body;
+
+        // Temporary bypass for OTP
+        const isOTPDisabled = await getSetting('DISABLE_EMAIL_OTP', process.env.DISABLE_EMAIL_OTP === 'true');
+        if (isOTPDisabled) {
+            return res.status(200).json({ message: 'Email verified successfully (Bypass)' });
+        }
 
         const otpRecord = await OTP.findOne({ email, code });
 

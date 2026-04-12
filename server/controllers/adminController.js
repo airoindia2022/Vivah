@@ -3,6 +3,20 @@ const Transaction = require('../models/transactionModel');
 const generateToken = require('../utils/generateToken');
 const os = require('os');
 const mongoose = require('mongoose');
+const Config = require('../models/configModel');
+
+// Cache for settings to avoid DB hits on every OTP send
+let settingsCache = {};
+
+const getSetting = async (key, defaultValue = null) => {
+    if (settingsCache[key] !== undefined) return settingsCache[key];
+    const config = await Config.findOne({ key });
+    if (config) {
+        settingsCache[key] = config.value;
+        return config.value;
+    }
+    return defaultValue;
+};
 
 // @desc    Get all users (admin)
 // @route   GET /api/admin/users
@@ -297,4 +311,69 @@ const getPlatformHealth = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, bulkDeleteUsers, deleteUser, toggleVerify, getStats, seedAdmin, getAllTransactions, getPlatformHealth };
+// @desc    Get all system settings
+// @route   GET /api/admin/settings
+// @access  Admin
+const getSettings = async (req, res) => {
+    try {
+        const settings = await Config.find();
+        
+        // Ensure DISABLE_EMAIL_OTP exists
+        let otpSetting = settings.find(s => s.key === 'DISABLE_EMAIL_OTP');
+        if (!otpSetting) {
+            otpSetting = await Config.create({
+                key: 'DISABLE_EMAIL_OTP',
+                value: process.env.DISABLE_EMAIL_OTP === 'true',
+                description: 'Disable email OTP verification for signup (Temporary feature)'
+            });
+            settings.push(otpSetting);
+        }
+
+        res.json(settings);
+    } catch (error) {
+        console.error('Admin getSettings Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+// @desc    Update a system setting
+// @route   PUT /api/admin/settings/:key
+// @access  Admin
+const updateSetting = async (req, res) => {
+    try {
+        const { value } = req.body;
+        const { key } = req.params;
+
+        const config = await Config.findOneAndUpdate(
+            { key },
+            { value },
+            { upsert: true, new: true }
+        );
+
+        // Update cache
+        settingsCache[key] = value;
+        // Also update env for redundancy (only if string/boolean)
+        if (typeof value === 'boolean' || typeof value === 'string') {
+            process.env[key] = String(value);
+        }
+
+        res.json({ message: 'Setting updated successfully', config });
+    } catch (error) {
+        console.error('Admin updateSetting Error:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+module.exports = { 
+    getAllUsers, 
+    bulkDeleteUsers, 
+    deleteUser, 
+    toggleVerify, 
+    getStats, 
+    seedAdmin, 
+    getAllTransactions, 
+    getPlatformHealth,
+    getSettings,
+    updateSetting,
+    getSetting // exported for internal use
+};

@@ -11,6 +11,8 @@ const {
     seedAdmin,
     getAllTransactions,
     getPlatformHealth,
+    getSettings,
+    updateSetting,
 } = require('../controllers/adminController');
 
 // Seed admin (public, only works once)
@@ -26,5 +28,7 @@ router.get('/transactions', getAllTransactions);
 router.delete('/users', bulkDeleteUsers);
 router.delete('/users/:id', deleteUser);
 router.put('/users/:id/verify', toggleVerify);
+router.get('/settings', getSettings);
+router.put('/settings/:key', updateSetting);
 
 module.exports = router;

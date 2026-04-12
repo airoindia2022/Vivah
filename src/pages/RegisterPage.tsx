@@ -38,8 +38,13 @@ export const RegisterPage = () => {
         setLoading(true);
         setError(null);
         try {
-            await authService.sendOTP(formData.email);
-            setShowOTP(true);
+            const data = await authService.sendOTP(formData.email);
+            if (data.otpDisabled) {
+                setIsEmailVerified(true);
+                setStep(2);
+            } else {
+                setShowOTP(true);
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to send verification code');
         } finally {
