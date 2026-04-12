@@ -43,9 +43,7 @@ import {
     HardDrive,
     Menu,
     X,
-    Settings as SettingsIcon,
-    ToggleLeft,
-    ToggleRight
+    Settings as SettingsIcon
 } from 'lucide-react';
 import api from '../services/api';
 
@@ -798,7 +796,7 @@ export const AdminPage = () => {
                                                 <Database size={18} className="text-brand-500" />
                                                 <div>
                                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Database</p>
-                                                    <p className="text-sm font-bold text-white">{health?.database.status || 'Stable'}</p>
+                                                    <p className="text-sm font-bold text-white">{health?.database?.status || 'Stable'}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -811,7 +809,7 @@ export const AdminPage = () => {
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">CPU Load</span>
                                                 </div>
                                                 <p className="text-lg font-bold text-white">
-                                                    {health?.cpu.loadAverage[0].toFixed(2) || '0.00'}
+                                                    {health?.cpu?.loadAverage?.[0].toFixed(2) || '0.00'}
                                                     <span className="text-[10px] text-slate-500 ml-1 font-medium">avg/min</span>
                                                 </p>
                                             </div>
@@ -821,7 +819,7 @@ export const AdminPage = () => {
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">RAM Usage</span>
                                                 </div>
                                                 <p className="text-lg font-bold text-white">
-                                                    {health ? Math.round(health.memory.system.used / (1024 * 1024 * 1024) * 10) / 10 : '0.0'}
+                                                    {health?.memory?.system?.used ? Math.round(health.memory.system.used / (1024 * 1024 * 1024) * 10) / 10 : '0.0'}
                                                     <span className="text-[10px] text-slate-500 ml-1 font-medium">GB</span>
                                                 </p>
                                             </div>
@@ -835,13 +833,13 @@ export const AdminPage = () => {
                                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Process Heap</span>
                                                 </div>
                                                 <span className="text-[10px] font-bold text-white">
-                                                    {health ? Math.round(health.memory.process.heapUsed / (1024 * 1024)) : 0}MB / {health ? Math.round(health.memory.process.heapTotal / (1024 * 1024)) : 0}MB
+                                                    {health?.memory?.process?.heapUsed ? Math.round(health.memory.process.heapUsed / (1024 * 1024)) : 0}MB / {health?.memory?.process?.heapTotal ? Math.round(health.memory.process.heapTotal / (1024 * 1024)) : 0}MB
                                                 </span>
                                             </div>
                                             <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
                                                 <motion.div
                                                     initial={{ width: 0 }}
-                                                    animate={{ width: `${health ? (health.memory.process.heapUsed / health.memory.process.heapTotal) * 100 : 0}%` }}
+                                                    animate={{ width: `${(health?.memory?.process?.heapUsed && health?.memory?.process?.heapTotal) ? (health.memory.process.heapUsed / health.memory.process.heapTotal) * 100 : 0}%` }}
                                                     className="h-full bg-brand-500"
                                                 />
                                             </div>
@@ -973,7 +971,7 @@ export const AdminPage = () => {
                                                                 <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center overflow-hidden">
                                                                     {u.photos && u.photos[0]
                                                                         ? <img src={u.photos[0]} className="w-full h-full object-cover" />
-                                                                        : <span className="text-sm font-bold text-indigo-400">{u.fullName.charAt(0)}</span>
+                                                                        : <span className="text-sm font-bold text-indigo-400">{u.fullName?.charAt(0) || '?'}</span>
                                                                     }
                                                                 </div>
                                                                 {u.isAdmin && <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-md bg-brand-500 flex items-center justify-center text-[10px] text-white shadow-xl">👑</div>}
@@ -1000,8 +998,8 @@ export const AdminPage = () => {
                                                         <p className="text-[10px] text-slate-500 italic mt-0.5">{u.location?.city || 'Unknown Location'}</p>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className="text-[11px] font-black tracking-tight" style={{ color: tierColors[u.subscriptionTier] }}>
-                                                            {u.subscriptionTier.toUpperCase()}
+                                                        <span className="text-[11px] font-black tracking-tight" style={{ color: tierColors[u.subscriptionTier || 'Free'] }}>
+                                                            {u.subscriptionTier?.toUpperCase() || 'FREE'}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-bold text-slate-500">
